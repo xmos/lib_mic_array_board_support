@@ -8,8 +8,15 @@ Microphone array board support library
 Microphone array board support library
 --------------------------------------
 
+Library for controlling the xCORE microphone array ref design 1v0.
+
+
 Features
 ........
+
+The Microphone array library has the following features:
+
+  * button and led interface
 
 Typical Resource Usage
 ......................
@@ -18,6 +25,3 @@ Software version and dependencies
 .................................
 
 .. libdeps::
-
-Related application notes
-.........................

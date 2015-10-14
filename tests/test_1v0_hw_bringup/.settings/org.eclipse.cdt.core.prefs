@@ -1,0 +1,9 @@
+eclipse.preferences.version=1
+environment/project/com.xmos.cdt.toolchain.1615835102/XDE_BUILD/delimiter=\:
+environment/project/com.xmos.cdt.toolchain.1615835102/XDE_BUILD/operation=append
+environment/project/com.xmos.cdt.toolchain.1615835102/XDE_BUILD/value=true
+environment/project/com.xmos.cdt.toolchain.1615835102/XMOS_MODULE_PATH/delimiter=\:
+environment/project/com.xmos.cdt.toolchain.1615835102/XMOS_MODULE_PATH/operation=append
+environment/project/com.xmos.cdt.toolchain.1615835102/XMOS_MODULE_PATH/value=/home/andrew/lib_mic_array/examples/app_lores_DAS_fixed\:/home/andrew/lib_mic_array/examples/app_mic_calibration\:/home/andrew/mic_array_ws/cic_design\:/home/andrew/lib_mic_array/examples/app_hires_DAS_fixed\:/home/andrew/lib_beamforming/lib_beam\:/home/andrew/mic_array_ws/lib_ethernet\:/home/andrew/mic_array_ws/lib_gpio\:/home/andrew/mic_array_ws/lib_i2c\:/home/andrew/mic_array_ws/lib_i2s\:/home/andrew/mic_array_ws/lib_locks\:/home/andrew/mic_array_ws/lib_logging\:/home/andrew/lib_mic_array/lib_mic_array\:/home/andrew/lib_mic_array_board_support/lib_mic_array_support\:/home/andrew/mic_array_ws/lib_otpinfo\:/home/andrew/mic_array_ws/lib_xassert\:/home/andrew/sc_usb_audio/module_usb_audio
+environment/project/com.xmos.cdt.toolchain.1615835102/append=true
+environment/project/com.xmos.cdt.toolchain.1615835102/appendContributed=true

@@ -1,14 +1,14 @@
-# The TARGET variable determines what target system the application is 
+# The TARGET variable determines what target system the application is
 # compiled for. It either refers to an XN file in the source directories
 # or a valid argument for the --target option when compiling.
 
 TARGET = MIC-ARRAY-1V0
 
 # The APP_NAME variable determines the name of the final .xe file. It should
-# not include the .xe postfix. If left blank the name will default to 
+# not include the .xe postfix. If left blank the name will default to
 # the project name
 
-APP_NAME =
+APP_NAME = 
 
 # The flags passed to xcc when building the application
 # You can also set the following to override flags for a particular language:
@@ -24,7 +24,7 @@ XCC_FLAGS_icmp.xc = $(XCC_FLAGS) -Wno-reinterpret-alignment
 
 # The USED_MODULES variable lists other module used by the application.
 
-USED_MODULES = lib_mic_array lib_ethernet lib_otpinfo lib_i2s lib_i2c
+USED_MODULES = lib_ethernet lib_i2c lib_i2s lib_mic_array lib_otpinfo lib_xassert
 
 #=============================================================================
 # The following part of the Makefile includes the common build infrastructure

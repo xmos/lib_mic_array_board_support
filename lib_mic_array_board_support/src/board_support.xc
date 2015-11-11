@@ -26,7 +26,8 @@ void button_and_led_server(server interface led_button_if lb, p_leds &leds, in p
 #pragma ordered
         select {
         case lb.set_led_brightness(unsigned led, unsigned brightness):{
-            led_brightness[led] = brightness;
+            if(led < LED_COUNT)
+                led_brightness[led] = brightness;
             break;
         }
         case lb.get_button_event(unsigned &button, e_button_state &pressed):{

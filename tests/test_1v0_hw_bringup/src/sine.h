@@ -1,3 +1,4 @@
+// Copyright (c) 2015, XMOS Ltd, All rights reserved
 static unsigned int i2s_sine[100] =
 {
     0x0100da00,0x0200b000,0x02fe8100,0x03f94b00,0x04f01100,

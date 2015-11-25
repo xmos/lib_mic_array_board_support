@@ -24,7 +24,7 @@ XCC_FLAGS_icmp.xc = $(XCC_FLAGS) -Wno-reinterpret-alignment
 
 # The USED_MODULES variable lists other module used by the application.
 
-USED_MODULES = lib_ethernet lib_i2c lib_i2s lib_mic_array lib_otpinfo lib_xassert
+USED_MODULES = lib_ethernet lib_i2c lib_i2s lib_otpinfo lib_xassert
 
 #=============================================================================
 # The following part of the Makefile includes the common build infrastructure

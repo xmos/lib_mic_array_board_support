@@ -14,7 +14,7 @@ Library for controlling the XMOS microphone array ref design 1v0.
 Features
 ........
 
-The Microphone array library has the following features:
+The microphone array board support library has the following features:
 
   * button and led interface
 

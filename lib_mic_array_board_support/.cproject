@@ -26,9 +26,15 @@
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include/xc&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include/clang&quot;"/>
+<<<<<<< HEAD
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}\target/include/xc&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}\target/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}\target/include/clang&quot;"/>
+=======
+									<listOptionValue builtIn="false" value="/home/andrew/vda_view/Installs/Linux/target/include/xc"/>
+									<listOptionValue builtIn="false" value="/home/andrew/vda_view/Installs/Linux/target/include"/>
+									<listOptionValue builtIn="false" value="/home/andrew/vda_view/Installs/Linux/target/include/clang"/>
+>>>>>>> 38380bf946245aeb896154a044117c88cef6c166
 								</option>
 								<option id="com.xmos.xc.compiler.option.defined.symbols.256286070" name="com.xmos.xc.compiler.option.defined.symbols" superClass="com.xmos.xc.compiler.option.defined.symbols" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__XC__=1"/>
@@ -185,8 +191,13 @@
 								<option id="com.xmos.c.compiler.option.include.paths.1237410569" name="com.xmos.c.compiler.option.include.paths" superClass="com.xmos.c.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include/clang&quot;"/>
+<<<<<<< HEAD
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}\target/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}\target/include/clang&quot;"/>
+=======
+									<listOptionValue builtIn="false" value="/home/andrew/vda_view/Installs/Linux/target/include"/>
+									<listOptionValue builtIn="false" value="/home/andrew/vda_view/Installs/Linux/target/include/clang"/>
+>>>>>>> 38380bf946245aeb896154a044117c88cef6c166
 								</option>
 								<option id="com.xmos.c.compiler.option.defined.symbols.1435399940" name="com.xmos.c.compiler.option.defined.symbols" superClass="com.xmos.c.compiler.option.defined.symbols" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__llvm__=1"/>
@@ -491,9 +502,15 @@
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include/clang&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}/target/include/c++/v1&quot;"/>
+<<<<<<< HEAD
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}\target/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}\target/include/clang&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${XMOS_TOOL_PATH}\target/include/c++/v1&quot;"/>
+=======
+									<listOptionValue builtIn="false" value="/home/andrew/vda_view/Installs/Linux/target/include"/>
+									<listOptionValue builtIn="false" value="/home/andrew/vda_view/Installs/Linux/target/include/clang"/>
+									<listOptionValue builtIn="false" value="/home/andrew/vda_view/Installs/Linux/target/include/c++/v1"/>
+>>>>>>> 38380bf946245aeb896154a044117c88cef6c166
 								</option>
 								<option id="com.xmos.cxx.compiler.option.defined.symbols.30503337" name="com.xmos.cxx.compiler.option.defined.symbols" superClass="com.xmos.cxx.compiler.option.defined.symbols" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__llvm__=1"/>

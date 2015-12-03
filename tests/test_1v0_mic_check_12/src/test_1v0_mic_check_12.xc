@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 on tile[0]: in port p_pdm_clk             = XS1_PORT_1E;
+on tile[0]: in buffered port:32 p_unused   = XS1_PORT_1K;
 on tile[0]: in port p_pdm_mics            = XS1_PORT_8B;
 on tile[0]: in port p_mclk                = XS1_PORT_1F;
 on tile[0]: clock mclk                    = XS1_CLKBLK_1;
@@ -15,7 +16,64 @@ static void pdm_interface(in port p_pdm_mics){
     unsigned zeros[8] = {0};
     unsigned count = 0;
 
-    printf("Started\n");
+
+    timer t;
+    unsigned time;
+
+    configure_clock_src(mclk, p_mclk);
+    configure_in_port(p_unused, mclk);
+    start_clock(mclk);
+
+    printf("Checking for Master Clock\n");
+    unsigned now, then;
+    t :> time;
+    t:> then;
+    int testing_mclk = 1;
+    p_unused:> int;
+#define CLOCK_COUNT 1000000
+    while(testing_mclk){
+        select {
+            case t when timerafter(time + 100000000):> time:{
+                printf("Time out on master clock\n");
+                printf("Switching to internal clock\n");
+                stop_clock(mclk);
+                stop_clock(pdmclk);
+                configure_clock_xcore(pdmclk, 16);
+                configure_port_clock_output(p_pdm_clk, pdmclk);
+                configure_in_port(p_pdm_mics, pdmclk);
+                start_clock(pdmclk);
+
+                testing_mclk = 0;
+                break;
+            }
+            case p_unused:> int:{
+                testing_mclk++;
+                t :> time;
+                if(testing_mclk == CLOCK_COUNT){
+                    printf("Master clock present\n");
+                    t:> now;
+                    unsigned elapsed =  (now - then);
+                    float t = (32.0*CLOCK_COUNT)/ (((float)elapsed)*10.0) * 1000.0;
+
+                    printf("\t%fMHz\n", t);
+                    stop_clock(mclk);
+                    stop_clock(pdmclk);
+                    configure_clock_src(mclk, p_mclk);
+                    configure_clock_src_divide(pdmclk, p_mclk, 8);
+                    configure_port_clock_output(p_pdm_clk, pdmclk);
+                    configure_in_port(p_pdm_mics, pdmclk);
+                    start_clock(mclk);
+                    start_clock(pdmclk);
+                    testing_mclk = 0;
+                }
+                break;
+            }
+        }
+    }
+
+    printf("\n");
+
+    printf("Started PDM microphone test\n");
     int broken[8] = {0};
     int tied_to_clock[8] = {0};
 
@@ -93,15 +151,7 @@ int main(){
 
     par{
         on tile[0]: {
-            configure_clock_src(mclk, p_mclk);
-            configure_clock_src_divide(pdmclk, p_mclk, 8);
-            configure_port_clock_output(p_pdm_clk, pdmclk);
-            configure_in_port(p_pdm_mics, pdmclk);
-            start_clock(mclk);
-            start_clock(pdmclk);
-            par{
-                pdm_interface(p_pdm_mics);
-            }
+            pdm_interface(p_pdm_mics);
         }
     }
     return 0;

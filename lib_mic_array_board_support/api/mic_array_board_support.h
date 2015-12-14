@@ -20,11 +20,12 @@ typedef struct {
 
 interface led_button_if {
   void set_led_brightness(unsigned led, unsigned brightness);
+  void set_led_ring_brightness(unsigned brightness);
   [[notification]] slave void button_event(void);
   [[clears_notification]] void get_button_event(unsigned &button, e_button_state &pressed);
 };
 
-void button_and_led_server(server interface led_button_if lb, p_leds &leds, in port p_buttons);
+void button_and_led_server(server interface led_button_if lb[n_lb], static const unsigned n_lb, p_leds &leds, in port p_buttons);
 
 
 #endif /* MIC_ARRAY_BOARD_SUPPORT_H_ */

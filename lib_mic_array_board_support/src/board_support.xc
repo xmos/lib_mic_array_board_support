@@ -5,7 +5,7 @@
 #define LED_COUNT 13
 #define LED_MAX_COUNT (0xfffff)
 
-void button_and_led_server(server interface led_button_if lb, p_leds &leds, in port p_buttons){
+void button_and_led_server(server interface led_button_if lb[n_lb], static const unsigned n_lb, p_leds &leds, in port p_buttons){
 
     e_button_state latest_button_pressed;
     unsigned latest_button_id;
@@ -25,11 +25,17 @@ void button_and_led_server(server interface led_button_if lb, p_leds &leds, in p
     while(1){
 #pragma ordered
         select {
-        case lb.set_led_brightness(unsigned led, unsigned brightness):{
+        case lb[int i].set_led_brightness(unsigned led, unsigned brightness):{
             led_brightness[led] = brightness;
             break;
         }
-        case lb.get_button_event(unsigned &button, e_button_state &pressed):{
+        case lb[int i].set_led_ring_brightness(unsigned brightness): {
+            for (int i=0; i < 12; i++) {
+                led_brightness[i] = brightness;
+            }
+            break;
+        }
+        case lb[int i].get_button_event(unsigned &button, e_button_state &pressed):{
             button = latest_button_id;
             pressed = latest_button_pressed;
             break;
@@ -51,7 +57,9 @@ void button_and_led_server(server interface led_button_if lb, p_leds &leds, in p
                 if( button_count[i]>(REPS/2)){
                     latest_button_id = i;
                     latest_button_pressed = (button_val>>i)&1;
-                    lb.button_event();
+                    for (int j=0; j < n_lb; j++) {
+                        lb[j].button_event();
+                    }
                 }
             }
             break;

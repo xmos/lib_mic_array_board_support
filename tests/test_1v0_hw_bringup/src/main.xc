@@ -25,6 +25,7 @@ out port p_leds_oen             = on tile[0]: XS1_PORT_1P;
 // Buttons
 in port p_buttons               = on tile[0]: XS1_PORT_4A;
 
+#if ETHERNET_BOARD
 // Ethernet MII
 port p_eth_rxclk  = on tile[1]: XS1_PORT_1A;
 port p_eth_rxd    = on tile[1]: XS1_PORT_4A;
@@ -40,17 +41,37 @@ clock eth_txclk   = on tile[1]: XS1_CLKBLK_2;
 port p_smi          = on tile[1]: XS1_PORT_4C; // Bit 0: MDC, Bit 1: MDIO
 // OTP
 otp_ports_t otp_ports = on tile[1]: OTP_PORTS_INITIALIZER;
+#endif
+
+#if ETHERNET_BOARD
+#define I2S_TILE 1
+#elif WIFI_BOARD
+#define I2S_TILE 0
+#else
+#error "Unknown board"
+#endif
 
 // I2S
-out buffered port:32 p_i2s_dout[1]  = on tile[1]: {XS1_PORT_1P};
-in port p_mclk_in1                  = on tile[1]: XS1_PORT_1O;
-out buffered port:32 p_bclk         = on tile[1]: XS1_PORT_1M;
-out buffered port:32 p_lrclk        = on tile[1]: XS1_PORT_1N;
-out port p_pll_sync                 = on tile[1]: XS1_PORT_4D;
-port p_i2c                          = on tile[1]: XS1_PORT_4E; // Bit 0: SCLK, Bit 1: SDA
-port p_rst_shared                   = on tile[1]: XS1_PORT_4F; // Bit 0: DAC_RST_N, Bit 1: ETH_RST_N
-clock mclk                          = on tile[1]: XS1_CLKBLK_3;
-clock bclk                          = on tile[1]: XS1_CLKBLK_4;
+#if ETHERNET_BOARD
+out buffered port:32 p_i2s_dout[1]  = on tile[I2S_TILE]: {XS1_PORT_1P};
+in port p_mclk_in1                  = on tile[I2S_TILE]: XS1_PORT_1O;
+out buffered port:32 p_bclk         = on tile[I2S_TILE]: XS1_PORT_1M;
+out buffered port:32 p_lrclk        = on tile[I2S_TILE]: XS1_PORT_1N;
+out port p_pll_sync                 = on tile[I2S_TILE]: XS1_PORT_4D;
+port p_i2c                          = on tile[I2S_TILE]: XS1_PORT_4E; // Bit 0: SCLK, Bit 1: SDA
+port p_rst_shared                   = on tile[I2S_TILE]: XS1_PORT_4F; // Bit 0: DAC_RST_N, Bit 1: ETH_RST_N
+clock mclk                          = on tile[I2S_TILE]: XS1_CLKBLK_3;
+clock bclk                          = on tile[I2S_TILE]: XS1_CLKBLK_4;
+#elif WIFI_BOARD
+out buffered port:32 p_i2s_dout[1]  = on tile[I2S_TILE]: {XS1_PORT_1I};
+out buffered port:32 p_bclk         = on tile[I2S_TILE]: XS1_PORT_1G;
+out buffered port:32 p_lrclk        = on tile[I2S_TILE]: XS1_PORT_1H;
+port p_i2c_scl                      = on tile[0]: XS1_PORT_1A;
+port p_i2c_sda                      = on tile[0]: XS1_PORT_1D;
+port p_rst_shared                   = on tile[0]: XS1_PORT_1J;
+clock mclk                          = on tile[I2S_TILE]: XS1_CLKBLK_3;
+clock bclk                          = on tile[I2S_TILE]: XS1_CLKBLK_4;
+#endif
 
 enum buttons
 {
@@ -199,26 +220,30 @@ void i2s_handler(server i2s_callback_if i2s,
 
   p_rst_shared <: 0xF;
 
-  i2c_regop_res_t res;
-  int i = 0x4A;
-  uint8_t data = i2c.read_reg(i, 1, res);
-  debug_printf("I2C ID: %x, res: %d\n", data, res);
+  delay_milliseconds(1);
 
-  data = i2c.read_reg(i, 0x02, res);
+  i2c_regop_res_t res;
+  uint8_t data;
+  int adr = 0x4A;
+  data = i2c.read_reg(adr, 0x01, res);
+  debug_printf("I2C ID: %x, res: %d\n", data, res);
+  xassert(data == 0xD9);
+
+  data = i2c.read_reg(adr, 0x02, res);
   data |= 1;
-  res = i2c.write_reg(i, 0x02, data); // Power down
+  res = i2c.write_reg(adr, 0x02, data); // Power down
 
   // Setting MCLKDIV2 high if using 24.576MHz.
-  data = i2c.read_reg(i, 0x03, res);
+  data = i2c.read_reg(adr, 0x03, res);
   data |= 1;
-  res = i2c.write_reg(i, 0x03, data);
+  res = i2c.write_reg(adr, 0x03, data);
 
   data = 0b01110000;
-  res = i2c.write_reg(i, 0x10, data);
+  res = i2c.write_reg(adr, 0x10, data);
 
-  data = i2c.read_reg(i, 0x02, res);
+  data = i2c.read_reg(adr, 0x02, res);
   data &= ~1;
-  res = i2c.write_reg(i, 0x02, data); // Power up
+  res = i2c.write_reg(adr, 0x02, data); // Power up
 
 
   while (1) {
@@ -312,15 +337,24 @@ int main(void)
   par {
     on tile[0]: buttons_and_leds();
 
-    on tile[1]: {
+    on tile[I2S_TILE]: {
+#if ETHERNET_BOARD
       configure_clock_src(mclk, p_mclk_in1);
+#elif WIFI_BOARD
+      configure_clock_src(mclk, p_mclk_in0);
+#endif
       start_clock(mclk);
       i2s_master(i_i2s, p_i2s_dout, 1, null, 0, p_bclk, p_lrclk, bclk, mclk);
     }
 
-    on tile[1]: [[distribute]] i2c_master_single_port(i_i2c, 1, p_i2c, 100, 0, 1, 0);
-    on tile[1]: [[distribute]] i2s_handler(i_i2s, i_i2c[0]);
+#if ETHERNET_BOARD
+    on tile[I2S_TILE]: [[distribute]] i2c_master_single_port(i_i2c, 1, p_i2c, 100, 0, 1, 0);
+#elif WIFI_BOARD
+    on tile[I2S_TILE]: [[distribute]] i2c_master(i_i2c, 1, p_i2c_scl, p_i2c_sda, 100);
+#endif
+    on tile[I2S_TILE]: [[distribute]] i2s_handler(i_i2s, i_i2c[0]);
 
+#if ETHERNET_BOARD
     on tile[1]: mii_ethernet_mac(i_cfg, NUM_CFG_CLIENTS,
                                  i_rx, NUM_ETH_CLIENTS,
                                  i_tx, NUM_ETH_CLIENTS,
@@ -338,6 +372,7 @@ int main(void)
     on tile[1]: icmp_server(i_cfg[CFG_TO_ICMP],
                             i_rx[ETH_TO_ICMP], i_tx[ETH_TO_ICMP],
                             ip_address, otp_ports);
+#endif
   }
   return 0;
 }

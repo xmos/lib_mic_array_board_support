@@ -211,12 +211,55 @@ void buttons_and_leds(void)
 #define OUTPUT_SAMPLE_RATE 48000
 #define MASTER_CLOCK_FREQUENCY 24576000
 
+#define SI5351A_I2C_ADDR      0x62
+// Clock generator register defines
+#define SI5351A_OE_CTRL       0x03
+#define SI5351A_FANOUT_EN     0xBB
+#define SI5351A_MS0_R0_DIV    0x2C
+#define SI5351A_CLK0_CTRL     0x10 // Register 16 - CLK0 Control
+#define SI5351A_MS0_P1_UPPER  0x2D // Register 45 - Multisynth0 Parameters - MS0_P1[15:8]
+#define SI5351A_MS0_P2_LOWER  0x31 // Register 49 - Multisynth0 Parameters - MS0_P2[7:0]
+
+/* Configure Si5351A to output 24.576MHz MCLK */
+void configure_si5351a(client i2c_master_if i2c)
+{
+  i2c_regop_res_t res;
+  uint8_t data;
+  int adr = 0x62; // SI5351A_I2C_ADDR
+  // Configure Si5351A to output 24.576MHz
+  res = i2c.write_reg(adr, SI5351A_OE_CTRL, 0xFD); // Disable CLK0 and CLK2
+  res = i2c.write_reg(adr, SI5351A_FANOUT_EN, 0xD0); // Enable Fanout of MS0
+  res = i2c.write_reg(adr, SI5351A_MS0_R0_DIV, 0x10); // Change R0 divider 2
+ 
+  res = i2c.write_reg(adr, SI5351A_CLK0_CTRL, 0x4D); // (Sets powered up, integer mode, src PLLB, not inverted, Sel MS0 as src for CLK0 o/p, 4mA drive strength)
+  res = i2c.write_reg(adr, SI5351A_MS0_P1_UPPER, 0x05); // (Sets relevant bits of P1 divider setting).
+  res = i2c.write_reg(adr, SI5351A_MS0_P2_LOWER, 0X00); // Write lower bits of P2
+  delay_milliseconds(1); // 1ms delay for MultiSynth output to settle
+  res = i2c.write_reg(adr, SI5351A_OE_CTRL, 0xF4);
+  
+  data = i2c.read_reg(adr, SI5351A_OE_CTRL, res);
+  xassert(data == 0xF4);
+  debug_printf("OE ctrl: %x\n", data);
+}
+
+
 [[distributable]]
 void i2s_handler(server i2s_callback_if i2s,
                  client i2c_master_if i2c)
 {
   int sine_count[2] = {0, 0};
   int sine_inc[2] = {0x080, 0x080};
+
+#if WIFI_BOARD
+  // DAC in reset
+  p_rst_shared <: 0x0;
+
+  delay_milliseconds(1);
+
+  // Configure the MCLK
+  configure_si5351a(i2c);
+
+#endif
 
   p_rst_shared <: 0xF;
 
@@ -225,32 +268,30 @@ void i2s_handler(server i2s_callback_if i2s,
   i2c_regop_res_t res;
   uint8_t data;
   int adr = 0x4A;
-  data = i2c.read_reg(adr, 0x01, res);
-  debug_printf("I2C ID: %x, res: %d\n", data, res);
-  xassert(data == 0xD9);
-
   data = i2c.read_reg(adr, 0x02, res);
   data |= 1;
   res = i2c.write_reg(adr, 0x02, data); // Power down
 
-  // Setting MCLKDIV2 high if using 24.576MHz.
-  data = i2c.read_reg(adr, 0x03, res);
-  data |= 1;
-  res = i2c.write_reg(adr, 0x03, data);
+  data = i2c.read_reg(adr, 0x01, res);
+  debug_printf("I2C ID: %x, res: %d\n", data, res);
+  xassert(data == 0xD9);
 
-  data = 0b01110000;
-  res = i2c.write_reg(adr, 0x10, data);
+  // Set DAC in slave I2S mode
+  data = 0b00001000;
+  res = i2c.write_reg(adr, 0x04, data);
+  data = i2c.read_reg(adr, 0x04, res);
+  debug_printf("04h = %x\n", data);
 
   data = i2c.read_reg(adr, 0x02, res);
   data &= ~1;
   res = i2c.write_reg(adr, 0x02, data); // Power up
-
 
   while (1) {
     select {
     case i2s.init(i2s_config_t &?i2s_config, tdm_config_t &?tdm_config):
       /* Configure the I2S bus */
       i2s_config.mode = I2S_MODE_I2S;
+      //i2s_config.mode = I2S_MODE_LEFT_JUSTIFIED;
       i2s_config.mclk_bclk_ratio = (MASTER_CLOCK_FREQUENCY/OUTPUT_SAMPLE_RATE)/64;
 
       break;

@@ -250,7 +250,7 @@ void i2s_handler(server i2s_callback_if i2s,
     select {
     case i2s.init(i2s_config_t &?i2s_config, tdm_config_t &?tdm_config):
       /* Configure the I2S bus */
-      i2s_config.mode = I2S_MODE_I2S;
+      i2s_config.mode = I2S_MODE_LEFT_JUSTIFIED;
       i2s_config.mclk_bclk_ratio = (MASTER_CLOCK_FREQUENCY/OUTPUT_SAMPLE_RATE)/64;
 
       break;

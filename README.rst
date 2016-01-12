@@ -25,8 +25,8 @@ Typical Resource Usage
 
   * - configuration: Default
     - globals: in port p_buttons = XS1_PORT_4A; p_leds leds = DEFAULT_INIT;
-    - locals: interface led_button_if lb;
-    - fn: button_and_led_server(lb, leds, p_buttons);
+    - locals: interface led_button_if lb[1];
+    - fn: button_and_led_server(lb, 1, leds, p_buttons);
     - pins: 13
     - ports: 3 (1-bit), 1 (4-bit), 2 (8-bit)
 

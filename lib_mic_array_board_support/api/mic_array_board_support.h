@@ -28,13 +28,18 @@ typedef struct {
  */
 interface led_button_if {
 
-    /** Sets the bightness of an LED.
-    *
-    *  \param led         The address of the led to set the brightness of.
-    *  \param brightness  The buffer containing data to write.
-    */
+  /** Sets the bightness of an LED.
+  *
+  *  \param led         The address of the led to set the brightness of.
+  *  \param brightness  The buffer containing data to write.
+  */
   void set_led_brightness(unsigned led, unsigned brightness);
 
+  /** Sets the bightness of the outer ring of LEDs.
+  *
+  *  \param brightness  The brightness value of outer LEDs
+  */
+  void set_led_ring_brightness(unsigned brightness);
 
   /** Button event notification.
   *
@@ -50,7 +55,7 @@ interface led_button_if {
   [[clears_notification]] void get_button_event(unsigned &button, e_button_state &pressed);
 };
 
-void button_and_led_server(server interface led_button_if lb, p_leds &leds, in port p_buttons);
+void button_and_led_server(server interface led_button_if lb[n_lb], static const unsigned n_lb, p_leds &leds, in port p_buttons);
 
 
 #endif /* MIC_ARRAY_BOARD_SUPPORT_H_ */

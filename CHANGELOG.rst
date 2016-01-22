@@ -3,6 +3,7 @@ Microphone array board support library change log
 
 1.0.0
 -----
+
   * Update to button/LED server to support multiple clients
   * Outer LED ring interface call added
 

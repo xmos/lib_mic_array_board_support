@@ -2,6 +2,7 @@
 #include <xs1.h>
 #include <platform.h>
 #include <limits.h>
+#include <stdlib.h>
 #include "debug_print.h"
 #include "xassert.h"
 #include "otp_board_info.h"
@@ -20,7 +21,7 @@ in port p_mclk_in0              = on tile[0]: XS1_PORT_1F;
 out port p_led0to7              = on tile[0]: XS1_PORT_8C;
 out port p_led8                 = on tile[0]: XS1_PORT_1K;
 out port p_led9                 = on tile[0]: XS1_PORT_1L;
-out port p_led10to12            = on tile[0]: XS1_PORT_8D;    
+out port p_led10to12            = on tile[0]: XS1_PORT_8D;
 out port p_leds_oen             = on tile[0]: XS1_PORT_1P;
 // Buttons
 in port p_buttons               = on tile[0]: XS1_PORT_4A;
@@ -109,7 +110,7 @@ void buttons_and_leds(void)
   p_leds_oen <: 1;
   p_leds_oen <: 0;
   // This array stores the pwm levels for the leds
-  int level[13] = {0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  int level[13] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
   for (int i=0; i < 13; i++) {
     level[i] = level[i] / (0xFFFF / pwm_res);
@@ -119,25 +120,36 @@ void buttons_and_leds(void)
   leds_tmr :> time;
   glow_tmr :> glow_time;
 
+  unsigned buttons_pressed = 0;
+
   while (1) {
+    if (buttons_pressed == 0xf) {
+      debug_printf("PASS\n");
+      exit(1);
+    }
+
     select
     {
       case buttons_active => p_buttons when pinsneq(button_val) :> unsigned new_button_val:
 
         if BUTTON_PRESSED(BUTTON_A, button_val, new_button_val) {
           debug_printf("Button A\n");
+          buttons_pressed |= 0x1;
           buttons_active = 0;
         }
         if BUTTON_PRESSED(BUTTON_B, button_val, new_button_val) {
           debug_printf("Button B\n");
+          buttons_pressed |= 0x2;
           buttons_active = 0;
         }
         if BUTTON_PRESSED(BUTTON_C, button_val, new_button_val) {
           debug_printf("Button C\n");
+          buttons_pressed |= 0x4;
           buttons_active = 0;
         }
         if BUTTON_PRESSED(BUTTON_D, button_val, new_button_val) {
           debug_printf("Button D\n");
+          buttons_pressed |= 0x8;
           buttons_active = 0;
         }
         if (!buttons_active)
@@ -176,15 +188,15 @@ void buttons_and_leds(void)
         break;
       }
       case glow_tmr when timerafter(glow_time) :> void:
-        for (int i=0; i < 12; i++) {
+        for (int i = 0; i < 13; i++) {
           unsigned lvl = 0;
           if (on_led == i) {
             lvl = 0xFFFFFFFF;
           }
-          if (i == 11 && on_led == 0) {
+          if (i == 12 && on_led == 0) {
             lvl = 0x3FFF;
           }
-          else if (i == 10 && on_led == 0) {
+          else if (i == 11 && on_led == 0) {
             lvl = 0x7FF;
           }
           else if (on_led-1 == i) {
@@ -197,7 +209,7 @@ void buttons_and_leds(void)
           level[i] = lvl / (0xFFFF / pwm_res);
         }
         on_led++;
-        if (on_led >= 12) {
+        if (on_led >= 13) {
           on_led = 0;
         }
 

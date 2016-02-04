@@ -2,6 +2,7 @@
 #include <platform.h>
 #include <xs1.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 on tile[0]: in port p_pdm_clk             = XS1_PORT_1E;
 on tile[0]: in buffered port:32 p_unused   = XS1_PORT_1K;
@@ -76,6 +77,8 @@ static void pdm_interface(in port p_pdm_mics){
     printf("Started PDM microphone test\n");
     int broken[8] = {0};
     int tied_to_clock[8] = {0};
+#define PASSES 5
+    unsigned n=0;
 
     unsigned print_counter = 0;
     for(unsigned i=0;i<0xfffff;i++)
@@ -139,7 +142,12 @@ static void pdm_interface(in port p_pdm_mics){
                 zeros[i]=0;
                 print_counter++;
                 if(!(print_counter&0xff))
-                        printf("Testing\n");
+                        printf("Testing %d of %d\n", ++n, PASSES);
+                if(n == PASSES){
+                    printf("Success\n");
+                    delay_milliseconds(100);
+                    _Exit(1);
+                }
             }
         }
         p_pdm_mics:> v;

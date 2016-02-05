@@ -87,7 +87,7 @@ static int is_valid_arp_packet(const unsigned char rxbuf[nbytes],
   if (rxbuf[12] != 0x08 || rxbuf[13] != 0x06)
     return 0;
 
-  debug_printf("ARP packet received\n");
+  //  debug_printf("ARP packet received\n");
 
   if (((const unsigned int *) rxbuf)[3] != 0x01000608)
   {
@@ -101,14 +101,14 @@ static int is_valid_arp_packet(const unsigned char rxbuf[nbytes],
   }
   if ((((const unsigned int *) rxbuf)[5] & 0xFFFF) != 0x0100)
   {
-    debug_printf("Not a request\n");
+    //    debug_printf("Not a request\n");
     return 0;
   }
   for (int i = 0; i < 4; i++)
   {
     if (rxbuf[38 + i] != own_ip_addr[i])
     {
-      debug_printf("Not for us\n");
+      //      debug_printf("Not for us\n");
       return 0;
     }
   }
@@ -201,7 +201,7 @@ static int is_valid_icmp_packet(const unsigned char rxbuf[nbytes],
   if (rxbuf[23] != 0x01)
     return 0;
 
-  debug_printf("ICMP packet received\n");
+  //  debug_printf("ICMP packet received\n");
 
   if (((const unsigned int *) rxbuf)[3] != 0x00450008)
   {
@@ -210,14 +210,14 @@ static int is_valid_icmp_packet(const unsigned char rxbuf[nbytes],
   }
   if ((((const unsigned int *) rxbuf)[8] >> 16) != 0x0008)
   {
-    debug_printf("Invalid type_code\n");
+    //debug_printf("Invalid type_code\n");
     return 0;
   }
   for (int i = 0; i < 4; i++)
   {
     if (rxbuf[30 + i] != own_ip_addr[i])
     {
-      debug_printf("Not for us\n");
+      //debug_printf("Not for us\n");
       return 0;
     }
   }
@@ -265,6 +265,7 @@ void icmp_server(client ethernet_cfg_if cfg,
   cfg.add_ethertype_filter(index, 0x0800);
 
   debug_printf("Test started\n");
+  int signaled_active = 0;
   while (1)
   {
     select {
@@ -274,6 +275,11 @@ void icmp_server(client ethernet_cfg_if cfg,
       ethernet_packet_info_t packet_info;
       rx.get_packet(packet_info, rxbuf, ETHERNET_MAX_PACKET_SIZE);
 
+      if (!signaled_active) {
+        debug_printf("Ethernet ready\n");
+        signaled_active = 1;
+      }
+
       if (packet_info.type != ETH_DATA)
         continue;
 
@@ -281,17 +287,15 @@ void icmp_server(client ethernet_cfg_if cfg,
       {
         int len = build_arp_response(rxbuf, txbuf, mac_address, ip_address);
         tx.send_packet(txbuf, len, ETHERNET_ALL_INTERFACES);
-        debug_printf("ARP response sent\n");
+        //        debug_printf("ARP response sent\n");
       }
       else if (is_valid_icmp_packet(rxbuf, packet_info.len, ip_address))
       {
         int len = build_icmp_response(rxbuf, txbuf, mac_address, ip_address);
         tx.send_packet(txbuf, len, ETHERNET_ALL_INTERFACES);
-        debug_printf("ICMP response sent\n");
+        //        debug_printf("ICMP response sent\n");
       }
       break;
     }
   }
 }
-
-

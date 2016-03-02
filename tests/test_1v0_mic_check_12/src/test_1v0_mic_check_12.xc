@@ -143,10 +143,23 @@ static void pdm_interface(in port p_pdm_mics){
                 print_counter++;
                 if(!(print_counter&0xff))
                         printf("Testing %d of %d\n", ++n, PASSES);
+
+
+
                 if(n == PASSES){
-                    printf("Success\n");
-                    delay_milliseconds(100);
-                    _Exit(1);
+                    int any_broken = 0;
+                    for(unsigned i=0;i<8;i++)
+                        any_broken |= broken[i];
+
+                    if(any_broken){
+                        printf("Failure\n");
+                        delay_milliseconds(100);
+                        _Exit(1);
+                    } else {
+                        printf("Success\n");
+                        delay_milliseconds(100);
+                        _Exit(0);
+                    }
                 }
             }
         }

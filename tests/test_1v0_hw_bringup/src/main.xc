@@ -85,6 +85,7 @@ enum buttons
 #define BUTTON_PRESSED(but_mask, old_val, new_val) (((old_val) & (but_mask)) == (but_mask) && ((new_val) & (but_mask)) == 0)
 #define BUTTON_DEBOUNCE_DELAY (20000000)
 #define LED_ON 0xFFFF
+#define NUM_BUTTONS 4
 void buttons_and_leds(void)
 {
   int button_val;
@@ -120,10 +121,23 @@ void buttons_and_leds(void)
   leds_tmr :> time;
   glow_tmr :> glow_time;
 
-  unsigned buttons_pressed = 0;
+  unsigned buttons_pressed[NUM_BUTTONS] = {0,0,0,0};
 
   while (1) {
-    if (buttons_pressed == 0xf) {
+    int all_pressed = 1;
+    for (int i = 0; i < NUM_BUTTONS; i++) {
+      if (buttons_pressed[i] == 4) {
+        debug_printf("Button pressed 4 times, press again to exit.\n");
+        // Prevent message being printed again
+        buttons_pressed[i] += 1;
+      } else if (buttons_pressed[i] > 5) {
+        debug_printf("FAIL\n");
+        exit(1);
+      } else if (buttons_pressed[i] == 0) {
+        all_pressed = 0;
+      }
+    }
+    if (all_pressed) {
       debug_printf("PASS\n");
       exit(1);
     }
@@ -134,22 +148,22 @@ void buttons_and_leds(void)
 
         if BUTTON_PRESSED(BUTTON_A, button_val, new_button_val) {
           debug_printf("Button A\n");
-          buttons_pressed |= 0x1;
+          buttons_pressed[0] += 1;
           buttons_active = 0;
         }
         if BUTTON_PRESSED(BUTTON_B, button_val, new_button_val) {
           debug_printf("Button B\n");
-          buttons_pressed |= 0x2;
+          buttons_pressed[1] += 1;
           buttons_active = 0;
         }
         if BUTTON_PRESSED(BUTTON_C, button_val, new_button_val) {
           debug_printf("Button C\n");
-          buttons_pressed |= 0x4;
+          buttons_pressed[2] += 1;
           buttons_active = 0;
         }
         if BUTTON_PRESSED(BUTTON_D, button_val, new_button_val) {
           debug_printf("Button D\n");
-          buttons_pressed |= 0x8;
+          buttons_pressed[3] += 1;
           buttons_active = 0;
         }
         if (!buttons_active)

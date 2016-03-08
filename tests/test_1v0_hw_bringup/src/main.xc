@@ -139,7 +139,7 @@ void buttons_and_leds(void)
     }
     if (all_pressed) {
       debug_printf("PASS\n");
-      exit(1);
+      exit(0);
     }
 
     select

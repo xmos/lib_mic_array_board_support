@@ -8,6 +8,7 @@
 #include "stdio.h"
 #include <stdlib.h>
 
+#include "i2c.h"
 #include "mic_array.h"
 #include "mic_array_board_support.h"
 
@@ -98,25 +99,51 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT],
         _Exit(all_work);
     }
 }
+
+port p_i2c = on tile[1]: XS1_PORT_4E; // Bit 0: SCLK, Bit 1: SDA
+
+void init_cs2100(client i2c_master_if i2c){
+
+    #define CS2100_DEVICE_CONFIG_1      0x03
+    #define CS2100_GLOBAL_CONFIG        0x05
+    #define CS2100_FUNC_CONFIG_1        0x16
+    #define CS2100_FUNC_CONFIG_2        0x17
+
+    i2c_regop_res_t res;
+    res = i2c.write_reg(0x9c>>1, CS2100_DEVICE_CONFIG_1, 0);
+    res = i2c.write_reg(0x9c>>1, CS2100_GLOBAL_CONFIG, 0);
+    res = i2c.write_reg(0x9c>>1, CS2100_FUNC_CONFIG_1, 0);
+    res = i2c.write_reg(0x9c>>1, CS2100_FUNC_CONFIG_2, 0);
+}
+
 int main() {
 
-
-    configure_clock_src_divide(pdmclk, p_mclk, 4);
-    configure_port_clock_output(p_pdm_clk, pdmclk);
-    configure_in_port(p_pdm_mics, pdmclk);
-    start_clock(pdmclk);
-
-    streaming chan c_4x_pdm_mic[DECIMATOR_COUNT];
-    streaming chan c_ds_output[DECIMATOR_COUNT];
-
-    interface led_button_if lb[1];
-
+    i2c_master_if i_i2c[1];
     par {
-        button_and_led_server(lb, 1, leds, p_buttons);
-        mic_array_pdm_rx(p_pdm_mics, c_4x_pdm_mic[0], c_4x_pdm_mic[1]);
-        mic_array_decimate_to_pcm_4ch(c_4x_pdm_mic[0], c_ds_output[0]);
-        mic_array_decimate_to_pcm_4ch(c_4x_pdm_mic[1], c_ds_output[1]);
-        test(c_ds_output, lb[0]);
+        on tile[1]:init_cs2100(i_i2c[0]);
+
+        on tile[1]:[[distribute]]i2c_master_single_port(i_i2c, 1, p_i2c, 100, 0, 1, 0);
+        on tile[0]:{
+            configure_clock_src_divide(pdmclk, p_mclk, 4);
+            configure_port_clock_output(p_pdm_clk, pdmclk);
+            configure_in_port(p_pdm_mics, pdmclk);
+            start_clock(pdmclk);
+
+            streaming chan c_4x_pdm_mic[DECIMATOR_COUNT];
+            streaming chan c_ds_output[DECIMATOR_COUNT];
+
+            interface led_button_if lb[1];
+
+            par {
+                button_and_led_server(lb, 1, leds, p_buttons);
+                mic_array_pdm_rx(p_pdm_mics, c_4x_pdm_mic[0], c_4x_pdm_mic[1]);
+                mic_array_decimate_to_pcm_4ch(c_4x_pdm_mic[0], c_ds_output[0]);
+                mic_array_decimate_to_pcm_4ch(c_4x_pdm_mic[1], c_ds_output[1]);
+                test(c_ds_output, lb[0]);
+            }
+
+        }
+
     }
     return 0;
 }

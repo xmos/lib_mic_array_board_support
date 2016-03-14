@@ -84,12 +84,22 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
             if(max < avg[m]) max = avg[m];
         }
 
-        long long diff = max - min;
-        printf("Microphone gain spread = %fdB\n",0.5* 20.0 * log10((double)min / (double)(max)));
+        if(max){
+            long long diff = max - min;
+            printf("Microphone gain spread = %fdB\n",0.5* 20.0 * log10((double)min / (double)(max)));
 
+        }
         int all_work = 0;
+
+
         for(unsigned m=0;m<7;m++){
-            if((overall_average/avg[m]) < 2){
+
+            if(avg[m] != 0){
+                if((overall_average/avg[m]) < 2){
+
+                } else {
+                    all_work = 1;
+                }
             } else {
                 all_work = 1;
             }

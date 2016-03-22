@@ -17,11 +17,10 @@
 #define DECIMATOR_COUNT     2   //8 channels requires 2 decimators
 #define FRAME_BUFFER_COUNT  2   //The minimum of 2 will suffice for this example
 
-on tile[0]: in port p_pdm_clk               = XS1_PORT_1E;
+on tile[0]: out port p_pdm_clk              = XS1_PORT_1E;
 on tile[0]: in buffered port:32 p_pdm_mics  = XS1_PORT_8B;
 on tile[0]: in port p_mclk                  = XS1_PORT_1F;
 on tile[0]: clock pdmclk                    = XS1_CLKBLK_1;
-
 
 int data[8][THIRD_STAGE_COEFS_PER_STAGE*DECIMATION_FACTOR];
 
@@ -44,11 +43,11 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
 
         mic_array_init_time_domain_frame(c_ds_output, DECIMATOR_COUNT, buffer, audio, dc);
 
-        for(unsigned i=0;i<4096;i++)
+        for(unsigned i=0;i<4096*8;i++)
             mic_array_get_next_time_domain_frame(c_ds_output, DECIMATOR_COUNT, buffer, audio, dc);
 
         long long avg [7] = {0};
-#define R 16
+#define R 12
 #define REPS (1<<R)
 
         for(unsigned r=0;r<REPS;r++){
@@ -93,7 +92,7 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
 
 
         for(unsigned m=0;m<7;m++){
-
+            printf("%llu\n", avg[m]);
             if(avg[m] != 0){
                 if((overall_average/avg[m]) < 2){
 
@@ -112,15 +111,33 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
         _Exit(all_work);
     }
 }
-
+#include "i2c.h"
+void init_cs2100(client i2c_master_if i2c){
+    #define CS2100_DEVICE_CONFIG_1      0x03
+    #define CS2100_GLOBAL_CONFIG        0x05
+    #define CS2100_FUNC_CONFIG_1        0x16
+    #define CS2100_FUNC_CONFIG_2        0x17
+    i2c.write_reg(0x9c>>1, CS2100_DEVICE_CONFIG_1, 0);
+    i2c.write_reg(0x9c>>1, CS2100_GLOBAL_CONFIG, 0);
+    i2c.write_reg(0x9c>>1, CS2100_FUNC_CONFIG_1, 0);
+    i2c.write_reg(0x9c>>1, CS2100_FUNC_CONFIG_2, 0);
+}
+port p_rst_shared                   = on tile[1]: XS1_PORT_4F; // Bit 0: DAC_RST_N, Bit 1: ETH_RST_N
+port p_i2c                          = on tile[1]: XS1_PORT_4E; // Bit 0: SCLK, Bit 1: SDA
 int main() {
 
+    i2c_master_if i_i2c[1];
     par {
+        on tile[1]: i2c_master_single_port(i_i2c, 1, p_i2c, 100, 0, 1, 0);
+        on tile[1]: init_cs2100(i_i2c[0]);
+
         on tile[0]:{
-            configure_clock_ref(pdmclk, 18);
+            stop_clock(pdmclk);
+            configure_clock_src_divide(pdmclk, p_mclk, 4);
             configure_port_clock_output(p_pdm_clk, pdmclk);
             configure_in_port(p_pdm_mics, pdmclk);
             start_clock(pdmclk);
+
 
             streaming chan c_4x_pdm_mic[DECIMATOR_COUNT];
             streaming chan c_ds_output[DECIMATOR_COUNT];

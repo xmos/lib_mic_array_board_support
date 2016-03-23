@@ -3,7 +3,7 @@
 #define MIC_ARRAY_BOARD_SUPPORT_H_
 
 #include <platform.h>
-#include "i2c.h"
+//#include "i2c.h"
 
 #define MIC_BOARD_SUPPORT_MAX_LED_BRIGHTNESS 256
 #define MIC_BOARD_SUPPORT_LED_COUNT 13

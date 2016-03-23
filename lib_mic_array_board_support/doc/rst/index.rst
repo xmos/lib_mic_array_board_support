@@ -24,10 +24,10 @@ API
 Supporting types
 ................
 
-.. doxygenenum:: e_button_state
-.. doxygenstruct:: p_leds
-.. doxygeninterface:: led_button_if
-.. doxygenfunction:: button_and_led_server
+.. doxygenenum:: mabs_button_state_t
+.. doxygenstruct:: mabs_led_ports_t
+.. doxygeninterface:: mabs_led_button_if
+.. doxygenfunction:: mabs_button_and_led_server
 
 Known Issues
 ------------

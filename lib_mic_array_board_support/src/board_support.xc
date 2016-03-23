@@ -6,9 +6,11 @@
 #define LED_COUNT 13
 #define LED_MAX_COUNT (0xfffff)
 
-void button_and_led_server(server interface led_button_if lb[n_lb], static const unsigned n_lb, p_leds &leds, in port p_buttons){
+void mabs_button_and_led_server(server interface mabs_led_button_if lb[n_lb],
+        static const unsigned n_lb, mabs_led_ports_t &leds,
+        in port p_buttons){
 
-    e_button_state latest_button_pressed;
+    mabs_button_state_t latest_button_pressed;
     unsigned latest_button_id;
 
     leds.p_leds_oen <: 1;
@@ -37,7 +39,7 @@ void button_and_led_server(server interface led_button_if lb[n_lb], static const
             }
             break;
         }
-        case lb[int i].get_button_event(unsigned &button, e_button_state &pressed):{
+        case lb[int i].get_button_event(unsigned &button, mabs_button_state_t &pressed):{
             button = latest_button_id;
             pressed = latest_button_pressed;
             break;

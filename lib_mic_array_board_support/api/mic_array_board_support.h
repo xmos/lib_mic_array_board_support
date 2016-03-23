@@ -2,16 +2,18 @@
 #ifndef MIC_ARRAY_BOARD_SUPPORT_H_
 #define MIC_ARRAY_BOARD_SUPPORT_H_
 
-#define MAX_LED_BRIGHTNESS 256
+#define MIC_BOARD_SUPPORT_MAX_LED_BRIGHTNESS 256
+#define MIC_BOARD_SUPPORT_LED_COUNT 13
+#define MIC_BOARD_SUPPORT_BUTTON_PORTS PORT_BUT_A_TO_D
 
-#define DEFAULT_INIT {XS1_PORT_8C, XS1_PORT_1K, XS1_PORT_1L, XS1_PORT_8D, XS1_PORT_1P}
+#define MIC_BOARD_SUPPORT_LED_PORTS {PORT_LED0_TO_7, PORT_LED8, PORT_LED9, PORT_LED10_TO_12, PORT_LED_OEN}
 
 /** This type is used to describe an event on a button.
  */
 typedef enum {
     BUTTON_PRESSED  = 0,    ///< Button is depressed.
     BUTTON_RELEASED = 1     ///< Button is released.
-} e_button_state;
+} mabs_button_state_t;
 
 /** Structure to describe the LED ports*/
 typedef struct {
@@ -20,13 +22,13 @@ typedef struct {
     out port p_led9;        /**<LED 9. */
     out port p_led10to12;   /**<LED 10 to 12. */
     out port p_leds_oen;    /**<LED Output enable (active low). */
-} p_leds;
+} mabs_led_ports_t;
 
 
 /** This interface is used to set the brightness of the LEDs and create
  * events on button presses.
  */
-interface led_button_if {
+interface mabs_led_button_if {
 
   /** Sets the bightness of an LED.
   *
@@ -52,10 +54,12 @@ interface led_button_if {
   *  \param button    The address of the button that caused the event.
   *  \param pressed   The state the button that caused the event.
   */
-  [[clears_notification]] void get_button_event(unsigned &button, e_button_state &pressed);
+  [[clears_notification]] void get_button_event(unsigned &button,
+          mabs_button_state_t &pressed);
 };
 
-void button_and_led_server(server interface led_button_if lb[n_lb], static const unsigned n_lb, p_leds &leds, in port p_buttons);
+void mabs_button_and_led_server(server interface mabs_led_button_if lb[n_lb], static const unsigned n_lb,
+        mabs_led_ports_t &leds, in port p_buttons);
 
 
 #endif /* MIC_ARRAY_BOARD_SUPPORT_H_ */

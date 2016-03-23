@@ -24,9 +24,9 @@ Typical Resource Usage
 .. resusage::
 
   * - configuration: Default
-    - globals: in port p_buttons = XS1_PORT_4A; p_leds leds = DEFAULT_INIT;
-    - locals: interface led_button_if lb[1];
-    - fn: button_and_led_server(lb, 1, leds, p_buttons);
+    - globals: in port p_buttons = MIC_BOARD_SUPPORT_BUTTON_PORTS; mabs_led_ports_t leds = MIC_BOARD_SUPPORT_LED_PORTS;
+    - locals: interface mabs_led_button_if lb[1];
+    - fn: mabs_button_and_led_server(lb, 1, leds, p_buttons);
     - pins: 13
     - ports: 3 (1-bit), 1 (4-bit), 2 (8-bit)
 

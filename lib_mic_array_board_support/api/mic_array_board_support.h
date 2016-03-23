@@ -2,11 +2,13 @@
 #ifndef MIC_ARRAY_BOARD_SUPPORT_H_
 #define MIC_ARRAY_BOARD_SUPPORT_H_
 
+#include "i2c.h"
+
 #define MIC_BOARD_SUPPORT_MAX_LED_BRIGHTNESS 256
 #define MIC_BOARD_SUPPORT_LED_COUNT 13
-#define MIC_BOARD_SUPPORT_BUTTON_PORTS PORT_BUT_A_TO_D
 
-#define MIC_BOARD_SUPPORT_LED_PORTS {PORT_LED0_TO_7, PORT_LED8, PORT_LED9, PORT_LED10_TO_12, PORT_LED_OEN}
+#define MIC_BOARD_SUPPORT_BUTTON_PORTS  PORT_BUT_A_TO_D
+#define MIC_BOARD_SUPPORT_LED_PORTS     {PORT_LED0_TO_7, PORT_LED8, PORT_LED9, PORT_LED10_TO_12, PORT_LED_OEN}
 
 /** This type is used to describe an event on a button.
  */
@@ -24,6 +26,16 @@ typedef struct {
     out port p_leds_oen;    /**<LED Output enable (active low). */
 } mabs_led_ports_t;
 
+
+typedef enum {
+   ETH_MIC_ARRAY,
+   WIFI_MIC_ARRAY
+} mabs_board_t;
+
+
+void mabs_i2c_master( mabs_board_t board);
+
+void mabs_init_pll(client i2c_master_if i2c, mabs_board_t board);
 
 /** This interface is used to set the brightness of the LEDs and create
  * events on button presses.

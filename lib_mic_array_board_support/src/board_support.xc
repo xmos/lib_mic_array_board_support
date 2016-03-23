@@ -3,7 +3,7 @@
 #include "mic_array_board_support.h"
 #include <stdio.h>
 
-#define LED_COUNT 13
+
 #define LED_MAX_COUNT (0xfffff)
 
 void mabs_button_and_led_server(server interface mabs_led_button_if lb[n_lb],
@@ -16,7 +16,7 @@ void mabs_button_and_led_server(server interface mabs_led_button_if lb[n_lb],
     leds.p_leds_oen <: 1;
     leds.p_leds_oen <: 0;
 
-    unsigned led_brightness[LED_COUNT] = {0};
+    unsigned led_brightness[MIC_BOARD_SUPPORT_LED_COUNT] = {0};
     timer t;
     unsigned time;
     unsigned start_of_time;
@@ -29,7 +29,7 @@ void mabs_button_and_led_server(server interface mabs_led_button_if lb[n_lb],
 #pragma ordered
         select {
         case lb[int i].set_led_brightness(unsigned led, unsigned brightness):{
-            if(led < LED_COUNT)
+            if(led < MIC_BOARD_SUPPORT_LED_COUNT)
                 led_brightness[led] = brightness;
             break;
         }

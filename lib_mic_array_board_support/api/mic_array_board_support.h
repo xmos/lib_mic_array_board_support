@@ -34,9 +34,9 @@ typedef enum {
 } mabs_board_t;
 
 
-void mabs_i2c_master( mabs_board_t board);
+//void mabs_i2c_master(mabs_board_t board);
 
-void mabs_init_pll(client i2c_master_if i2c, mabs_board_t board);
+//void mabs_init_pll(client i2c_master_if i2c, mabs_board_t board);
 
 /** This interface is used to set the brightness of the LEDs and create
  * events on button presses.

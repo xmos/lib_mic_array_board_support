@@ -1,6 +1,20 @@
 Microphone array board support library change log
 =================================================
 
+2.0.0
+-----
+
+  * Added support for the xCORE WiFi Microphone Array board 1V0
+  * Updated API to avoid conflicts in global namespace
+
+  * Changes to dependencies:
+
+    - lib_i2c: Added dependency 3.1.3
+
+    - lib_logging: Added dependency 2.0.1
+
+    - lib_xassert: Added dependency 2.0.1
+
 1.0.0
 -----
 

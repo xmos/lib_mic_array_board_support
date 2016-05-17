@@ -6,6 +6,7 @@
 
 #define LED_MAX_COUNT (0xfffff)
 
+[[combinable]]
 void mabs_button_and_led_server(server interface mabs_led_button_if lb[n_lb],
         static const unsigned n_lb, mabs_led_ports_t &leds,
         in port p_buttons){

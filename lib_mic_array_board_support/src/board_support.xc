@@ -2,9 +2,20 @@
 #include <xs1.h>
 #include "mic_array_board_support.h"
 #include <stdio.h>
+#include <timer.h>
 
 
 #define LED_MAX_COUNT (0xfffff)
+
+/** Minimum period between polling the timer case, specified in microseconds
+ *
+ *  As a combinable task cannot currently support an ordered select + default
+ *  case, it is necessary to back the timer case off to avoid the starving other
+ *  combined tasks of MIPS.
+ *
+ *  This will impact the achievable resolution of the LED PWM.
+ */
+#define MIN_POLL_TIME_US (4 * XS1_TIMER_MHZ)
 
 [[combinable]]
 void mabs_button_and_led_server(server interface mabs_led_button_if lb[n_lb],
@@ -27,7 +38,7 @@ void mabs_button_and_led_server(server interface mabs_led_button_if lb[n_lb],
     unsigned button_val;
     p_buttons :> button_val;
     while(1){
-#pragma ordered
+// #pragma ordered
         select {
         case lb[int i].set_led_brightness(unsigned led, unsigned brightness):{
             if(led < MIC_BOARD_SUPPORT_LED_COUNT)
@@ -70,7 +81,8 @@ void mabs_button_and_led_server(server interface mabs_led_button_if lb[n_lb],
             break;
         }
 
-        case t:> unsigned now :{
+        case t when timerafter(time) :> unsigned now :{
+            time = now + MIN_POLL_TIME_US;
             unsigned elapsed = (now-start_of_time)&LED_MAX_COUNT;
             elapsed>>=(20-8);
             unsigned d=0;

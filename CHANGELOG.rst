@@ -1,6 +1,14 @@
 Microphone array board support library change log
 =================================================
 
+2.1.0
+-----
+
+  * Allow the mabs_button_and_led_server task to be combined. As a combinable
+    task cannot currently support an ordered select + default case, the timer
+    case is now run with a constant minimum period to ensure that any other
+    tasks combined with it are not starved.
+
 2.0.0
 -----
 

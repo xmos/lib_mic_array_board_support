@@ -25,9 +25,6 @@ void mabs_button_and_led_server(server interface mabs_led_button_if lb[n_lb],
     mabs_button_state_t latest_button_pressed;
     unsigned latest_button_id;
 
-    leds.p_leds_oen <: 1;
-    leds.p_leds_oen <: 0;
-
     unsigned led_brightness[MIC_BOARD_SUPPORT_LED_COUNT] = {0};
     timer t;
     unsigned time;

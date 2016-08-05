@@ -74,6 +74,9 @@
             <Port Location="XS1_PORT_1D" Name="PORT_WLAN_SPI_CS_N"/>
             <Port Location="XS1_PORT_4A" Name="PORT_WLAN_SPI_IRQ_N"/>
             <Port Location="XS1_PORT_4B" Name="PORT_WLAN_3V3_EN_WLAN_RST_N"/>
+
+            <!-- Expansion header ports -->
+            <Port Location="XS1_PORT_1L" Name="PORT_EXPANSION_4"/>
           </Tile>
         </Node>
         <Node Id="1" InPackageId="1" Type="periph:XS1-SU" Reference="usb_tile" Oscillator="24MHz">

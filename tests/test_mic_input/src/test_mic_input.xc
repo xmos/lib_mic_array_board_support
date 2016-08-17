@@ -9,7 +9,9 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "i2c.h"
 #include "mic_array.h"
+#include "mic_array_board_support.h"
 
 
 //If the decimation factor is changed the the coefs array of decimator_config must also be changed.
@@ -47,6 +49,7 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
             mic_array_get_next_time_domain_frame(c_ds_output, DECIMATOR_COUNT, buffer, audio, dc);
 
         long long avg [7] = {0};
+
 #define R 12
 #define REPS (1<<R)
 
@@ -55,11 +58,9 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
             mic_array_frame_time_domain *  current =
                                mic_array_get_next_time_domain_frame(c_ds_output, DECIMATOR_COUNT, buffer, audio, dc);
 
-
             for(unsigned m=0;m<7;m++){
                 long long energy = 0;
                 for(unsigned s=0;s<(1<<MIC_ARRAY_MAX_FRAME_SIZE_LOG2);s++){
-
                     long long v = current->data[m][s];
                     v=v>>((MIC_ARRAY_MAX_FRAME_SIZE_LOG2)/2);
                     energy += (v*v);
@@ -111,17 +112,7 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
         _Exit(all_work);
     }
 }
-#include "i2c.h"
-void init_cs2100(client i2c_master_if i2c){
-    #define CS2100_DEVICE_CONFIG_1      0x03
-    #define CS2100_GLOBAL_CONFIG        0x05
-    #define CS2100_FUNC_CONFIG_1        0x16
-    #define CS2100_FUNC_CONFIG_2        0x17
-    i2c.write_reg(0x9c>>1, CS2100_DEVICE_CONFIG_1, 0);
-    i2c.write_reg(0x9c>>1, CS2100_GLOBAL_CONFIG, 0);
-    i2c.write_reg(0x9c>>1, CS2100_FUNC_CONFIG_1, 0);
-    i2c.write_reg(0x9c>>1, CS2100_FUNC_CONFIG_2, 0);
-}
+
 port p_rst_shared                   = on tile[1]: XS1_PORT_4F; // Bit 0: DAC_RST_N, Bit 1: ETH_RST_N
 port p_i2c                          = on tile[1]: XS1_PORT_4E; // Bit 0: SCLK, Bit 1: SDA
 int main() {
@@ -129,7 +120,7 @@ int main() {
     i2c_master_if i_i2c[1];
     par {
         on tile[1]: i2c_master_single_port(i_i2c, 1, p_i2c, 100, 0, 1, 0);
-        on tile[1]: init_cs2100(i_i2c[0]);
+        on tile[1]: mabs_init_pll(i_i2c[0], ETH_MIC_ARRAY);
 
         on tile[0]:{
             stop_clock(pdmclk);
@@ -137,7 +128,6 @@ int main() {
             configure_port_clock_output(p_pdm_clk, pdmclk);
             configure_in_port(p_pdm_mics, pdmclk);
             start_clock(pdmclk);
-
 
             streaming chan c_4x_pdm_mic[DECIMATOR_COUNT];
             streaming chan c_ds_output[DECIMATOR_COUNT];

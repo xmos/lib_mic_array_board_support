@@ -2,6 +2,7 @@
 #include <xscope.h>
 #include <platform.h>
 #include <xs1.h>
+#include <xs2_su_registers.h>
 #include <string.h>
 #include <xclib.h>
 #include <stdint.h>
@@ -22,18 +23,18 @@
 on tile[0]: out port p_pdm_clk              = XS1_PORT_1E;
 on tile[0]: in buffered port:32 p_pdm_mics  = XS1_PORT_8B;
 on tile[0]: in port p_mclk                  = XS1_PORT_1F;
-on tile[0]: clock pdmclk                    = XS1_CLKBLK_1;
+on tile[0]: clock pdmclk                    = XS1_CLKBLK_2;
 
 int data[8][THIRD_STAGE_COEFS_PER_STAGE*DECIMATION_FACTOR];
 
 void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
     unsafe{
         unsigned buffer;
-        memset(data, 0, 8*THIRD_STAGE_COEFS_PER_STAGE*DECIMATION_FACTOR*sizeof(int));
+        memset(data, 0, sizeof(data));
 
         mic_array_frame_time_domain audio[FRAME_BUFFER_COUNT];
 
-        mic_array_decimator_conf_common_t dcc = {0, 1, 0, 0, DECIMATION_FACTOR,
+        mic_array_decimator_conf_common_t dcc = {MIC_ARRAY_MAX_FRAME_SIZE_LOG2, 1, 0, 0, DECIMATION_FACTOR,
                g_third_stage_div_2_fir, 0, FIR_COMPENSATOR_DIV_2,
                DECIMATOR_NO_FRAME_OVERLAP, FRAME_BUFFER_COUNT};
         mic_array_decimator_config_t dc[2] = {
@@ -45,12 +46,12 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
 
         mic_array_init_time_domain_frame(c_ds_output, DECIMATOR_COUNT, buffer, audio, dc);
 
-        for(unsigned i=0;i<4096*8;i++)
+        for(unsigned i=0;i<128;i++)
             mic_array_get_next_time_domain_frame(c_ds_output, DECIMATOR_COUNT, buffer, audio, dc);
 
         long long avg [7] = {0};
 
-#define R 12
+#define R 8
 #define REPS (1<<R)
 
         for(unsigned r=0;r<REPS;r++){
@@ -62,8 +63,7 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
                 long long energy = 0;
                 for(unsigned s=0;s<(1<<MIC_ARRAY_MAX_FRAME_SIZE_LOG2);s++){
                     long long v = current->data[m][s];
-                    v=v>>((MIC_ARRAY_MAX_FRAME_SIZE_LOG2)/2);
-                    energy += (v*v);
+                    energy += ((v*v)>>MIC_ARRAY_MAX_FRAME_SIZE_LOG2);
                 }
                 avg[m] += (energy/REPS);
             }
@@ -109,6 +109,8 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
         else
             printf("At least one microphone broken\n");
         delay_milliseconds(100);
+
+        while(1);
         _Exit(all_work);
     }
 }
@@ -116,13 +118,19 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
 port p_rst_shared                   = on tile[1]: XS1_PORT_4F; // Bit 0: DAC_RST_N, Bit 1: ETH_RST_N
 port p_i2c                          = on tile[1]: XS1_PORT_4E; // Bit 0: SCLK, Bit 1: SDA
 int main() {
-
+    chan c_sync;
     i2c_master_if i_i2c[1];
     par {
         on tile[1]: i2c_master_single_port(i_i2c, 1, p_i2c, 100, 0, 1, 0);
-        on tile[1]: mabs_init_pll(i_i2c[0], ETH_MIC_ARRAY);
+        on tile[1]: {
+            p_rst_shared <: 0;
+            mabs_init_pll(i_i2c[0], ETH_MIC_ARRAY);
+            c_sync <: 1;
+        }
 
         on tile[0]:{
+            c_sync :> int;
+
             stop_clock(pdmclk);
             configure_clock_src_divide(pdmclk, p_mclk, 4);
             configure_port_clock_output(p_pdm_clk, pdmclk);

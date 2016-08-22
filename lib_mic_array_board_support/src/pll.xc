@@ -1,13 +1,8 @@
 // Copyright (c) 2016, XMOS Ltd, All rights reserved
 #include <xs1.h>
 #include "mic_array_board_support.h"
-#include <stdio.h>
 
 #include "i2c.h"
-
-
-
-
 
 void mabs_init_pll(client i2c_master_if i2c, mabs_board_t board){
     switch(board){
@@ -17,10 +12,11 @@ void mabs_init_pll(client i2c_master_if i2c, mabs_board_t board){
         #define CS2100_FUNC_CONFIG_1        0x16
         #define CS2100_FUNC_CONFIG_2        0x17
 
-        i2c.write_reg(0x9c>>1, CS2100_DEVICE_CONFIG_1, 0);
-        i2c.write_reg(0x9c>>1, CS2100_GLOBAL_CONFIG, 0);
-        i2c.write_reg(0x9c>>1, CS2100_FUNC_CONFIG_1, 0);
-        i2c.write_reg(0x9c>>1, CS2100_FUNC_CONFIG_2, 0);
+        i2c.write_reg(0x9c>>1, 0x02,  0x01);
+        i2c.write_reg(0x9c>>1, CS2100_DEVICE_CONFIG_1,  0x00);
+        i2c.write_reg(0x9c>>1, CS2100_GLOBAL_CONFIG,  0x00);
+        i2c.write_reg(0x9c>>1, CS2100_FUNC_CONFIG_2,  0x10);
+        i2c.write_reg(0x9c>>1, 0x02,  0x00);
         return;
     }
     case WIFI_MIC_ARRAY:{

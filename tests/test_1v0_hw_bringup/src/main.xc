@@ -47,7 +47,7 @@ otp_ports_t otp_ports = on tile[1]: OTP_PORTS_INITIALIZER;
 #if ETHERNET_BOARD
 #define I2S_TILE 1
 #elif WIFI_BOARD
-#define I2S_TILE 0
+#define I2S_TILE 1 // for 1V1 board
 #else
 #error "Unknown board"
 #endif
@@ -64,12 +64,12 @@ port p_rst_shared                   = on tile[I2S_TILE]: XS1_PORT_4F; // Bit 0: 
 clock mclk                          = on tile[I2S_TILE]: XS1_CLKBLK_3;
 clock bclk                          = on tile[I2S_TILE]: XS1_CLKBLK_4;
 #elif WIFI_BOARD
-out buffered port:32 p_i2s_dout[1]  = on tile[I2S_TILE]: {XS1_PORT_1I};
-out buffered port:32 p_bclk         = on tile[I2S_TILE]: XS1_PORT_1G;
-out buffered port:32 p_lrclk        = on tile[I2S_TILE]: XS1_PORT_1H;
-port p_i2c_scl                      = on tile[0]: XS1_PORT_1A;
-port p_i2c_sda                      = on tile[0]: XS1_PORT_1D;
-port p_rst_shared                   = on tile[0]: XS1_PORT_1J;
+out buffered port:32 p_i2s_dout[1]  = on tile[I2S_TILE]: {XS1_PORT_1P};
+in port p_mclk_in1                  = on tile[I2S_TILE]: XS1_PORT_1O;
+out buffered port:32 p_bclk         = on tile[I2S_TILE]: XS1_PORT_1M;
+out buffered port:32 p_lrclk        = on tile[I2S_TILE]: XS1_PORT_1N;
+port p_i2c                          = on tile[I2S_TILE]: XS1_PORT_4E; // Bit 0: SCLK, Bit 1: SDA
+port p_rst_shared                   = on tile[I2S_TILE]: XS1_PORT_4F; // Bit 0: DAC_RST_N, Bit 1: no connect
 clock mclk                          = on tile[I2S_TILE]: XS1_CLKBLK_3;
 clock bclk                          = on tile[I2S_TILE]: XS1_CLKBLK_4;
 #endif
@@ -367,7 +367,7 @@ int main(void)
 #if ETHERNET_BOARD
       configure_clock_src(mclk, p_mclk_in1);
 #elif WIFI_BOARD
-      configure_clock_src(mclk, p_mclk_in0);
+      configure_clock_src(mclk, p_mclk_in1);
 #endif
       start_clock(mclk);
       i2s_master(i_i2s, p_i2s_dout, 1, null, 0, p_bclk, p_lrclk, bclk, mclk);
@@ -376,7 +376,7 @@ int main(void)
 #if ETHERNET_BOARD
     on tile[I2S_TILE]: [[distribute]] i2c_master_single_port(i_i2c, 1, p_i2c, 100, 0, 1, 0);
 #elif WIFI_BOARD
-    on tile[I2S_TILE]: [[distribute]] i2c_master(i_i2c, 1, p_i2c_scl, p_i2c_sda, 100);
+    on tile[I2S_TILE]: [[distribute]] i2c_master_single_port(i_i2c, 1, p_i2c, 100, 0, 1, 0);
 #endif
     on tile[I2S_TILE]: [[distribute]] i2s_handler(i_i2s, i_i2c[0]);
 

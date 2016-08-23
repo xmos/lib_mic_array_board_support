@@ -110,7 +110,7 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
             printf("At least one microphone broken\n");
         delay_milliseconds(100);
 
-        while(1);
+        // while(1);
         _Exit(all_work);
     }
 }

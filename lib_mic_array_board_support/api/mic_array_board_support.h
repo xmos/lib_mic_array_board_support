@@ -9,7 +9,12 @@
 #define MIC_BOARD_SUPPORT_LED_COUNT 13
 
 #define MIC_BOARD_SUPPORT_BUTTON_PORTS  PORT_BUT_A_TO_D
+
+#if defined(PORT_LED_OEN)
 #define MIC_BOARD_SUPPORT_LED_PORTS     {PORT_LED0_TO_7, PORT_LED8, PORT_LED9, PORT_LED10_TO_12, PORT_LED_OEN}
+#else
+#define MIC_BOARD_SUPPORT_LED_PORTS     {PORT_LED0_TO_7, PORT_LED8, PORT_LED9, PORT_LED10_TO_12, null}
+#endif
 
 /** This type is used to describe an event on a button.
  */
@@ -30,7 +35,8 @@ typedef struct {
 
 typedef enum {
    ETH_MIC_ARRAY,
-   WIFI_MIC_ARRAY
+   WIFI_MIC_ARRAY,
+   SMART_MIC_BASE
 } mabs_board_t;
 
 

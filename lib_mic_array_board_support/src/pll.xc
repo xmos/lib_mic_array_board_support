@@ -6,7 +6,7 @@
 
 void mabs_init_pll(client i2c_master_if i2c, mabs_board_t board){
     switch(board){
-    case ETH_MIC_ARRAY:{
+    case ETH_MIC_ARRAY:
         #define CS2100_DEVICE_CONFIG_1      0x03
         #define CS2100_GLOBAL_CONFIG        0x05
         #define CS2100_FUNC_CONFIG_1        0x16
@@ -18,8 +18,9 @@ void mabs_init_pll(client i2c_master_if i2c, mabs_board_t board){
         i2c.write_reg(0x9c>>1, CS2100_FUNC_CONFIG_2,  0x10);
         i2c.write_reg(0x9c>>1, 0x02,  0x00);
         return;
-    }
-    case WIFI_MIC_ARRAY:{
+
+    case SMART_MIC_BASE:
+    case WIFI_MIC_ARRAY:
         // SI5351A Register Addresses
         #define SI5351A_OE_CTRL      (0x03) // Register 3  - Output Enable Control
         #define SI5351A_FANOUT_EN    (0xBB) // Register 187 - Fanout Enable Control
@@ -85,11 +86,6 @@ void mabs_init_pll(client i2c_master_if i2c, mabs_board_t board){
          * This will output 24.576MHz on CLK0 to xcore
          */
         res = i2c.write_reg(clock_gen_i2c_address, SI5351A_OE_CTRL, 0xF4);
-
-
-
-
-        return;
-    }
+        break;
     }
 }

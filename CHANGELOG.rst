@@ -1,19 +1,14 @@
 Microphone array board support library change log
 =================================================
 
-3.1.0
+2.2.0
 -----
 
   * ADDED: Support for SmartMic base board 1V0
-
-3.0.0
------
-
   * CHANGE: Update the supported hardware revision of xCORE Microphone Array to
     1V3
   * CHANGE: Update the supported hardware revision of xCORE WiFi Microphone
     Array to 1V1
-  * CHANGE: Remove 'p_leds_oen' port from mabs_led_ports_t
 
 2.1.0
 -----

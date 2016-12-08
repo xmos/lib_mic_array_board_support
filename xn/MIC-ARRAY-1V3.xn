@@ -24,6 +24,7 @@
             <Port Location="XS1_PORT_1K" Name="PORT_LED8"/>
             <Port Location="XS1_PORT_1L" Name="PORT_LED9"/>
             <Port Location="XS1_PORT_8D" Name="PORT_LED10_TO_12"/>
+            <Port Location="XS1_PORT_1P" Name="PORT_LED_OEN"/>
 
             <!-- Button ports -->
             <Port Location="XS1_PORT_4A" Name="PORT_BUT_A_TO_D"/>

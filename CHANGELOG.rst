@@ -1,6 +1,13 @@
 Microphone array board support library change log
 =================================================
 
+3.0.0
+-----
+
+  * Update the supported hardware revision of xCORE Microphone Array to 1V3
+  * Update the supported hardware revision of xCORE WiFi Microphone Array to 1V1
+  * Remove 'p_leds_oen' port from mabs_led_ports_t
+
 2.1.0
 -----
 

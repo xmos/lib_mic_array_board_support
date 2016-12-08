@@ -29,7 +29,8 @@ typedef struct {
 
 typedef enum {
    ETH_MIC_ARRAY,
-   WIFI_MIC_ARRAY
+   WIFI_MIC_ARRAY,
+   SMART_MIC_BASE
 } mabs_board_t;
 
 

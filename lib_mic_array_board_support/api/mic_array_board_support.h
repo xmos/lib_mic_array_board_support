@@ -29,7 +29,7 @@ typedef struct {
     out port p_led8;        /**<LED 8. */
     out port p_led9;        /**<LED 9. */
     out port p_led10to12;   /**<LED 10 to 12. */
-    out port p_leds_oen;    /**<LED Output enable (active low). */
+    out port ?p_leds_oen;   /**<LED Output enable (active low). */
 } mabs_led_ports_t;
 
 

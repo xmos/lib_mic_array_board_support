@@ -1,4 +1,4 @@
-// Copyright (c) 2015-2016, XMOS Ltd, All rights reserved
+// Copyright (c) 2015-2017, XMOS Ltd, All rights reserved
 #ifndef MIC_ARRAY_BOARD_SUPPORT_H_
 #define MIC_ARRAY_BOARD_SUPPORT_H_
 
@@ -32,7 +32,9 @@ typedef struct {
     out port ?p_leds_oen;   /**<LED Output enable (active low). */
 } mabs_led_ports_t;
 
-
+/**
+ * Supported board types
+ */
 typedef enum {
    ETH_MIC_ARRAY,
    WIFI_MIC_ARRAY,
@@ -40,8 +42,12 @@ typedef enum {
 } mabs_board_t;
 
 
-//void mabs_i2c_master(mabs_board_t board);
 
+/** Configure the PLL for the specified board.
+ *
+ * \param i2c   The i2c bus used to configure the audio codec.
+ * \param board Specifies the type of board being used.
+ */
 void mabs_init_pll(client i2c_master_if i2c, mabs_board_t board);
 
 /** This interface is used to set the brightness of the LEDs and create
@@ -77,6 +83,15 @@ interface mabs_led_button_if {
           mabs_button_state_t &pressed);
 };
 
+/** A task to handle the LEDs and buttons of a microphone array board.
+ *
+ * This task can be combined with other tasks.
+ * 
+ * \param lb          An array of client interfaces.
+ * \param n_lb        The number of client tasks connected to this server.
+ * \param leds        The structure containing the ports used to drive the LEDs.
+ * \param p_buttons   The port to which the buttons are mapped.
+ */
 [[combinable]]
 void mabs_button_and_led_server(server interface mabs_led_button_if lb[n_lb], static const unsigned n_lb,
         mabs_led_ports_t &leds, in port p_buttons);

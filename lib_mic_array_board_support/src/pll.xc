@@ -64,12 +64,14 @@ void mabs_init_pll(client i2c_master_if i2c, mabs_board_t board){
          * This stays at this value.
          */
         res = i2c.write_reg(clock_gen_i2c_address, SI5351A_MS0_R0_DIV, 0x10);
+        res = i2c.write_reg(clock_gen_i2c_address, SI5351A_MS2_R2_DIV, 0x30);
 
         /* MCLK = 24.576MHz (12,24,48,96,192kHz)
          * Sets powered up, integer mode, src PLLA, not inverted,
          * Sel MS0 as src for CLK0 o/p, 4mA drive strength
          */
         res = i2c.write_reg(clock_gen_i2c_address, SI5351A_CLK0_CTRL, 0x4D);
+        res = i2c.write_reg(clock_gen_i2c_address, SI5351A_CLK2_CTRL, 0x69);
         // Sets relevant bits of P1 divider setting
         res = i2c.write_reg(clock_gen_i2c_address, SI5351A_MS0_P1_UPPER, 0x05);
 
@@ -85,7 +87,7 @@ void mabs_init_pll(client i2c_master_if i2c, mabs_board_t board){
         /* Enable all the clock outputs now we've finished changing the settings.
          * This will output 24.576MHz on CLK0 to xcore
          */
-        res = i2c.write_reg(clock_gen_i2c_address, SI5351A_OE_CTRL, 0xF4);
+        res = i2c.write_reg(clock_gen_i2c_address, SI5351A_OE_CTRL, 0xF8);
         break;
     }
 }

@@ -1,6 +1,13 @@
 Microphone array board support library change log
 =================================================
 
+2.2.1
+-----
+  * CHANGE: Fix the PLL settings so that they work correctly for xCORE WiFi
+    Microphone Array to 1V1
+  * CHANGE: Ensure that the LED OEN doesn't cause compile errors on xCORE WiFi
+    Microphone Array to 1V1
+
 2.2.0
 -----
 

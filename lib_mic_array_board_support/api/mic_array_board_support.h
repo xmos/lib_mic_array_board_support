@@ -13,7 +13,7 @@
 #if defined(PORT_LED_OEN)
 #define MIC_BOARD_SUPPORT_LED_PORTS     {PORT_LED0_TO_7, PORT_LED8, PORT_LED9, PORT_LED10_TO_12, PORT_LED_OEN}
 #else
-#define MIC_BOARD_SUPPORT_LED_PORTS     {PORT_LED0_TO_7, PORT_LED8, PORT_LED9, PORT_LED10_TO_12, null}
+#define MIC_BOARD_SUPPORT_LED_PORTS     {PORT_LED0_TO_7, PORT_LED8, PORT_LED9, PORT_LED10_TO_12}
 #endif
 
 /** This type is used to describe an event on a button.
@@ -29,7 +29,9 @@ typedef struct {
     out port p_led8;        /**<LED 8. */
     out port p_led9;        /**<LED 9. */
     out port p_led10to12;   /**<LED 10 to 12. */
+#if defined(PORT_LED_OEN)
     out port p_leds_oen;    /**<LED Output enable (active low). */
+#endif
 } mabs_led_ports_t;
 
 /**

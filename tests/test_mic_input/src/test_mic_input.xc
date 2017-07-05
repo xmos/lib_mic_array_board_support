@@ -49,7 +49,7 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
         for(unsigned i=0;i<128;i++)
             mic_array_get_next_time_domain_frame(c_ds_output, DECIMATOR_COUNT, buffer, audio, dc);
 
-        long long avg [7] = {0};
+        long long avg [COUNT] = {0};
 
 #define R 8
 #define REPS (1<<R)
@@ -59,7 +59,7 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
             mic_array_frame_time_domain *  current =
                                mic_array_get_next_time_domain_frame(c_ds_output, DECIMATOR_COUNT, buffer, audio, dc);
 
-            for(unsigned m=0;m<7;m++){
+            for(unsigned m=0;m<COUNT;m++){
                 long long energy = 0;
                 for(unsigned s=0;s<(1<<MIC_ARRAY_MAX_FRAME_SIZE_LOG2);s++){
                     long long v = current->data[m][s];
@@ -72,14 +72,14 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
 
         long long overall_average = 0;
 
-        for(unsigned m=0;m<7;m++)
-            overall_average += (avg[m]/7);
+        for(unsigned m=0;m<COUNT;m++)
+            overall_average += (avg[m]/COUNT);
 
         long long min = LONG_LONG_MAX;
         long long max = LONG_LONG_MIN;
 
 
-        for(unsigned m=0;m<7;m++){
+        for(unsigned m=0;m<COUNT;m++){
             if(min > avg[m]) min = avg[m];
             if(max < avg[m]) max = avg[m];
         }
@@ -92,7 +92,7 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
         int all_work = 0;
 
 
-        for(unsigned m=0;m<7;m++){
+        for(unsigned m=0;m<COUNT;m++){
             printf("%llu\n", avg[m]);
             if(avg[m] != 0){
                 if((overall_average/avg[m]) < 2){

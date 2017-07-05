@@ -74,24 +74,26 @@ static void pdm_interface(in port p_pdm_mics){
     printf("Started PDM microphone test\n");
     delay_milliseconds(1000);
 
+    unsigned mic_count = COUNT;
+
 #define N (1<<24)
     for(unsigned n=0;n<N;n++){
         p_pdm_mics:> v;
-        for(unsigned i=0;i<7;i++){
+        for(unsigned i=0;i<mic_count;i++){
             if(v&1) ones[i]++;
             v=v>>1;
         }
     }
 
     unsigned long long avg = 0;
-    for(unsigned i=0;i<7;i++)
+    for(unsigned i=0;i<mic_count;i++)
         avg += ones[i];
-    avg /= 7;
+    avg /= mic_count;
 
     int broken[8] = {0};
 
     printf("mic :   ones    :  zeros  :  delta\n");
-    for(int i=0;i<7;i++){
+    for(int i=0;i<mic_count;i++){
         double delta = 20.0 * log10((double) ones[i] / (double)avg);
         printf("%d: %10d %10d    %fdB\n",i, ones[i], N - ones[i], delta);
         if(abs(delta > 6.0)){
@@ -100,7 +102,7 @@ static void pdm_interface(in port p_pdm_mics){
         }
     }
 
-    for(unsigned i=0;i<7;i++){
+    for(unsigned i=0;i<mic_count;i++){
         if(ones[i] == N){
             if(!broken[i])
                 printf("%d broken - tied high\n", i);
@@ -114,7 +116,7 @@ static void pdm_interface(in port p_pdm_mics){
     }
 
     int any_broken = 0;
-    for(unsigned i=0;i<7;i++)
+    for(unsigned i=0;i<mic_count;i++)
         any_broken |= broken[i];
 
     if(any_broken){

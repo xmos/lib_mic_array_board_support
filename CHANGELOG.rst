@@ -1,6 +1,11 @@
 Microphone array board support library change log
 =================================================
 
+2.2.1
+-----
+
+  * CHANGE: microphone tests now have build configurations for 1-8 microphones.
+
 2.2.0
 -----
 

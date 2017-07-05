@@ -4,7 +4,11 @@ Microphone array board support library change log
 2.2.1
 -----
 
-  * CHANGE: microphone tests now have build configurations for 1-8 microphones.
+  * CHANGE: Microphone tests now have build configurations for 1-8 microphones.
+  * CHANGE: Fix the PLL settings so that they work correctly for xCORE WiFi
+    Microphone Array to 1V1
+  * CHANGE: Ensure that the LED OEN doesn't cause compile errors on xCORE WiFi
+    Microphone Array to 1V1
 
 2.2.0
 -----

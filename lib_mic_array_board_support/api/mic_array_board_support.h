@@ -23,6 +23,10 @@ typedef enum {
     BUTTON_RELEASED = 1     ///< Button is released.
 } mabs_button_state_t;
 
+/** Special value for the initial event before any buttons pressed.
+ */
+#define BUTTON_EVENT_NONE (-1)
+
 /** Structure to describe the LED ports*/
 typedef struct {
     out port p_led0to7;     /**<LED 0 to 7. */
@@ -80,6 +84,8 @@ interface mabs_led_button_if {
   *
   *  \param button    The address of the button that caused the event.
   *  \param pressed   The state the button that caused the event.
+  *
+  *  Returns BUTTON_EVENT_NONE the first time round.
   */
   [[clears_notification]] void get_button_event(unsigned &button,
           mabs_button_state_t &pressed);

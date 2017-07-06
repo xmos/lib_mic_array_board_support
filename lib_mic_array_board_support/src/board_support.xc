@@ -22,8 +22,8 @@ void mabs_button_and_led_server(server interface mabs_led_button_if lb[n_lb],
         static const unsigned n_lb, mabs_led_ports_t &leds,
         in port p_buttons){
 
-    mabs_button_state_t latest_button_pressed;
-    unsigned latest_button_id;
+    mabs_button_state_t latest_button_pressed = BUTTON_RELEASED;
+    unsigned latest_button_id = BUTTON_EVENT_NONE;
 
     #if defined(PORT_LED_OEN)
     leds.p_leds_oen <: 1;

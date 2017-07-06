@@ -17,3 +17,4 @@
 Installs/*
 test_results.csv
 *.log
+.*.swp

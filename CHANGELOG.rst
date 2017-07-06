@@ -1,6 +1,11 @@
 Microphone array board support library change log
 =================================================
 
+2.2.2
+-----
+
+  * CHANGE: Return a special "none" value for first button event
+
 2.2.1
 -----
 

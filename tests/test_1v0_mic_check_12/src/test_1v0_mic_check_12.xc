@@ -55,6 +55,14 @@ static void pdm_interface(in port p_pdm_mics){
                     float t = (32.0*CLOCK_COUNT)/ (((float)elapsed)*10.0) * 1000.0;
 
                     printf("\t%fMHz\n", t);
+
+                    if(t > 64.0){
+
+                        printf("Failure: PLL clock too high\n");
+                        delay_milliseconds(100);
+                        _Exit(1);
+                    }
+
                     stop_clock(mclk);
                     stop_clock(pdmclk);
                     configure_clock_src(mclk, p_mclk);

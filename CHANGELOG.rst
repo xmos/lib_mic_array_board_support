@@ -6,8 +6,7 @@ Microphone array board support library change log
 
   * CHANGE: Improved microphone tests to do subband diff
 
-2.2.1
------
+2.2.2
 -----
 
   * CHANGE: Return a special "none" value for first button event

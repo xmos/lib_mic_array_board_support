@@ -88,15 +88,32 @@ void mabs_button_and_led_server(server interface mabs_led_button_if lb[n_lb],
             unsigned elapsed = (now-start_of_time)&LED_MAX_COUNT;
             elapsed>>=(20-8);
             unsigned d=0;
+#if defined(PORT_LED0_TO_7)
             for(unsigned i=0;i<8;i++)
                 d=(d>>1)+(0x80*(led_brightness[i]<=elapsed));
             leds.p_led0to7 <: d;
+#endif
+#if defined(PORT_LED8)
             leds.p_led8 <: (led_brightness[8]<=elapsed);
+#endif
+#if defined(PORT_LED9)
             leds.p_led9 <: (led_brightness[9]<=elapsed);
+#endif
+#if defined(PORT_LED8_TO_11)
+            d=0;
+            for(unsigned i=8;i<12;i++)
+                d=(d>>1)+(0x80*(led_brightness[i]<=elapsed));
+            leds.p_led8to11 <: d;
+#endif
+#if defined(PORT_LED10_TO_12)
             d=0;
             for(unsigned i=10;i<13;i++)
                 d=(d>>1)+(0x4*(led_brightness[i]<=elapsed));
             leds.p_led10to12 <: d;
+#endif
+#if defined(PORT_LED_12)
+            leds.p_led12 <: (led_brightness[12]<=elapsed);
+#endif
             break;
         }
         /*

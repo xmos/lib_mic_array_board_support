@@ -13,8 +13,6 @@
 <XtEventColor Id="3" R="0" G="139" B="139" KeyText="None"/>
 <XtEventColor Id="255" R="255" G="0" B="0" KeyText="None"/>
 </XtEventColors>
-<XtGlobalStart MilliSecs="1500298016516"/>
+<XtGlobalStart MilliSecs="1504017111724"/>
 <TotalXtEvents Number="0"/>
 <XtEventRecords>
-</XtEventRecords>
-</XtEvents>

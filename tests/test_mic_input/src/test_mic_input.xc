@@ -10,20 +10,17 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include <dsp.h>
-#include "i2c.h"
 #include "mic_array.h"
 #include "mic_array_board_support.h"
 
 
 //If the decimation factor is changed the the coefs array of decimator_config must also be changed.
-#define DECIMATION_FACTOR   2   //Corresponds to a 48kHz output sample rate
+#define DECIMATION_FACTOR   6   //Corresponds to a 48kHz output sample rate
 #define DECIMATOR_COUNT     2   //8 channels requires 2 decimators
 #define FRAME_BUFFER_COUNT  2   //The minimum of 2 will suffice for this example
 
-
 #define FRAME_LENGTH (1<<MIC_ARRAY_MAX_FRAME_SIZE_LOG2)
-#define FFT_SINE_LUT dsp_sine_256
+#define FFT_SINE_LUT dsp_sine_1024
 #define FFT_CHANNELS ((COUNT+1)/2)
 
 on tile[0]: out port p_pdm_clk              = XS1_PORT_1E;
@@ -33,9 +30,9 @@ on tile[0]: clock pdmclk                    = XS1_CLKBLK_2;
 
 int data[8][THIRD_STAGE_COEFS_PER_STAGE*DECIMATION_FACTOR];
 
-typedef struct fd_frame {
-    dsp_complex_t data[FFT_CHANNELS*2][FRAME_LENGTH/2];
-} fd_frame;
+int your_favourite_window_function(unsigned i, unsigned window_length){
+    return((int)((double)INT_MAX*sqrt(0.5*(1.0 - cos(2.0 * 3.14159265359*(double)i / (double)(window_length-2))))));
+}
 
 void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
     unsafe{
@@ -44,15 +41,19 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
 
         mic_array_frame_fft_preprocessed audio[FRAME_BUFFER_COUNT];
 
+        int window[FRAME_LENGTH/2];
+        for(unsigned i=0;i<FRAME_LENGTH/2;i++)
+             window[i] = your_favourite_window_function(i, FRAME_LENGTH);
+
         mic_array_decimator_conf_common_t dcc = {
                 MIC_ARRAY_MAX_FRAME_SIZE_LOG2,
                 1, //dc removal
                 1, //bit reversed indexing
-                0,
+                window,
                 DECIMATION_FACTOR,
-                g_third_stage_div_2_fir,
+                g_third_stage_div_6_fir,
                 0,
-                FIR_COMPENSATOR_DIV_2,
+                FIR_COMPENSATOR_DIV_6,
                 DECIMATOR_NO_FRAME_OVERLAP,
                 FRAME_BUFFER_COUNT};
         mic_array_decimator_config_t dc[2] = {
@@ -64,20 +65,34 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
 
         mic_array_init_frequency_domain_frame(c_ds_output, DECIMATOR_COUNT, buffer, audio, dc);
 
-        for(unsigned i=0;i<128;i++)
+        for(unsigned i=0;i<16;i++)
             mic_array_get_next_frequency_domain_frame(c_ds_output, DECIMATOR_COUNT, buffer, audio, dc);
 
-#define R (8  + MIC_ARRAY_MAX_FRAME_SIZE_LOG2 - 8)
+#define R 8
 #define REPS (1<<R)
 
 
         int64_t subband_rms_power[COUNT][FRAME_LENGTH/2];
+        int64_t subband_max_power[COUNT][FRAME_LENGTH/2];
+        int64_t subband_min_power[COUNT][FRAME_LENGTH/2];
+
         memset(subband_rms_power, 0, sizeof(subband_rms_power));
+
+        for(unsigned ch=0;ch<COUNT;ch++){
+            for (unsigned band=1;band < FRAME_LENGTH/2;band++){
+                subband_max_power[ch][band] = 0;
+                subband_min_power[ch][band]  = LONG_LONG_MAX;
+            }
+        }
+
 
         for(unsigned r=0;r<REPS;r++){
 
             mic_array_frame_fft_preprocessed *  current =
                     mic_array_get_next_frequency_domain_frame(c_ds_output, DECIMATOR_COUNT, buffer, audio, dc);
+
+//            unsigned c = dsp_bfp_cls(current->data[0],FRAME_LENGTH*COUNT/2) - 2;
+//            dsp_bfp_shl(current->data[0],FRAME_LENGTH*COUNT/2, c);
 
             for(unsigned i=0;i<FFT_CHANNELS;i++){
                 dsp_fft_forward(current->data[i], FRAME_LENGTH, FFT_SINE_LUT);
@@ -92,14 +107,57 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
                             (int64_t)fd_frame->data[ch][band].im * (int64_t)fd_frame->data[ch][band].im;
                     power >>= R;
                     subband_rms_power[ch][band] += power;
+                    if(subband_max_power[ch][band] < power)
+                        subband_max_power[ch][band] = power;
+                    if(subband_min_power[ch][band] > power)
+                        subband_min_power[ch][band] = power;
+
                 }
             }
         }
-
-        //TODO maybe avg and sqrt the subbands.
-
+        int64_t mask = 0;
+        for(unsigned ch=0;ch<COUNT;ch++){
+            for (unsigned band=1;band < FRAME_LENGTH/2;band++){
+                mask |= subband_rms_power[ch][band];
+            }
+        }
+        int32_t top= mask >> 32;
+        int32_t bottom = mask;
+        unsigned headroom;
+        if(top){
+            headroom = clz(top) - 2;
+        } else {
+            headroom = clz(bottom) + 30;
+        }
+        for(unsigned ch=0;ch<COUNT;ch++){
+            for (unsigned band=1;band < FRAME_LENGTH/2;band++){
+                int64_t t =  subband_rms_power[ch][band] << headroom;
+                subband_rms_power[ch][band] = (int)(sqrt((double)t));
+            }
+        }
         unsigned within_spec_count[COUNT][COUNT];
         memset(within_spec_count, 0, sizeof(within_spec_count));
+
+#define DEBUG 1
+#if DEBUG
+        for (unsigned band=1;band < FRAME_LENGTH/2;band++){
+
+            unsigned ch_a = 0;
+            int64_t a = subband_rms_power[ch_a][band];
+            int64_t a_min = subband_min_power[ch_a][band];
+            int64_t a_max = subband_max_power[ch_a][band];
+            printf("%d %lld %lld %lld ", band, a);
+            for(unsigned ch_b=1;ch_b<COUNT;ch_b++){
+                int64_t b = subband_rms_power[ch_b][band];
+                int64_t b_min = subband_min_power[ch_b][band];
+                int64_t b_max = subband_max_power[ch_b][band];
+
+                printf("%lld %lld %lld ", b, b_min, b_max);
+            }
+            printf("\n");
+        }
+#endif
+
 
         for (unsigned band=1;band < FRAME_LENGTH/2;band++){
             for(unsigned ch_a=0;ch_a<COUNT;ch_a++){
@@ -112,20 +170,22 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
                     within_spec_count[ch_a][ch_b] += v;
                     within_spec_count[ch_b][ch_a] += v;
                 }
-//                within_spec_count[ch_a][ch_a] += 1;
+//                within_spec_count[ch_a[ch_a] += 1;
             }
         }
 
-        for(unsigned ch_a=0;ch_a<COUNT;ch_a++){
-            unsigned mic_sum = 0;
-            for(unsigned ch_b=0;ch_b<COUNT;ch_b++){
-                mic_sum += within_spec_count[ch_a][ch_b];
-            }
-            if(mic_sum > ((COUNT-2) * 16))
-                printf("Mic %d: pass\n", ch_a);
-            else
-                printf("Mic %d: fail\n", ch_a);
-        }
+//        for(unsigned ch_a=0;ch_a<COUNT;ch_a++){
+//            unsigned mic_sum = 0;
+//            for(unsigned ch_b=0;ch_b<COUNT;ch_b++){
+//                printf("%d ", within_spec_count[ch_a][ch_b]);
+//                mic_sum += within_spec_count[ch_a][ch_b];
+//            }
+//            printf("\n");
+//            if(mic_sum > ((COUNT-2) * 16))
+//                printf("Mic %d: pass\n", ch_a);
+//            else
+//                printf("Mic %d: fail\n", ch_a);
+//        }
     }
     _Exit(1);
 }

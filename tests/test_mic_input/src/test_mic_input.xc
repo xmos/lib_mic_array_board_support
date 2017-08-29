@@ -119,6 +119,8 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
         for(unsigned ch=0;ch<COUNT;ch++){
             for (unsigned band=1;band < FRAME_LENGTH/2;band++){
                 mask |= subband_rms_power[ch][band];
+                mask |= subband_max_power[ch][band];
+                mask |= subband_min_power[ch][band];
             }
         }
         int32_t top= mask >> 32;
@@ -133,6 +135,10 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
             for (unsigned band=1;band < FRAME_LENGTH/2;band++){
                 int64_t t =  subband_rms_power[ch][band] << headroom;
                 subband_rms_power[ch][band] = (int)(sqrt((double)t));
+                t =  subband_max_power[ch][band] << headroom;
+                subband_max_power[ch][band] = (int)(sqrt((double)t));
+                t =  subband_min_power[ch][band] << headroom;
+                subband_min_power[ch][band] = (int)(sqrt((double)t));
             }
         }
         unsigned within_spec_count[COUNT][COUNT];
@@ -146,12 +152,11 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
             int64_t a = subband_rms_power[ch_a][band];
             int64_t a_min = subband_min_power[ch_a][band];
             int64_t a_max = subband_max_power[ch_a][band];
-            printf("%d %lld %lld %lld ", band, a);
+            printf("%d %lld %lld %lld ", band, a, a_min, a_max);
             for(unsigned ch_b=1;ch_b<COUNT;ch_b++){
                 int64_t b = subband_rms_power[ch_b][band];
                 int64_t b_min = subband_min_power[ch_b][band];
                 int64_t b_max = subband_max_power[ch_b][band];
-
                 printf("%lld %lld %lld ", b, b_min, b_max);
             }
             printf("\n");

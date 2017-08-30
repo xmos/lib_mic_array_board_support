@@ -13,14 +13,15 @@
 #include "mic_array.h"
 #include "mic_array_board_support.h"
 
+#include <float.h>
 
 //If the decimation factor is changed the the coefs array of decimator_config must also be changed.
 #define DECIMATION_FACTOR   6   //Corresponds to a 48kHz output sample rate
 #define DECIMATOR_COUNT     2   //8 channels requires 2 decimators
-#define FRAME_BUFFER_COUNT  2   //The minimum of 2 will suffice for this example
+#define FRAME_BUFFER_COUNT  3   //The minimum of 2 will suffice for this example
 
 #define FRAME_LENGTH (1<<MIC_ARRAY_MAX_FRAME_SIZE_LOG2)
-#define FFT_SINE_LUT dsp_sine_1024
+#define FFT_SINE_LUT dsp_sine_128
 #define FFT_CHANNELS ((COUNT+1)/2)
 
 on tile[0]: out port p_pdm_clk              = XS1_PORT_1E;
@@ -54,7 +55,7 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
                 g_third_stage_div_6_fir,
                 0,
                 FIR_COMPENSATOR_DIV_6,
-                DECIMATOR_NO_FRAME_OVERLAP,
+                DECIMATOR_HALF_FRAME_OVERLAP,
                 FRAME_BUFFER_COUNT};
         mic_array_decimator_config_t dc[2] = {
           {&dcc, data[0], {INT_MAX, INT_MAX, INT_MAX, INT_MAX}, 4},
@@ -68,31 +69,19 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
         for(unsigned i=0;i<16;i++)
             mic_array_get_next_frequency_domain_frame(c_ds_output, DECIMATOR_COUNT, buffer, audio, dc);
 
-#define R 8
+#define R 10
 #define REPS (1<<R)
 
-
         int64_t subband_rms_power[COUNT][FRAME_LENGTH/2];
-        int64_t subband_max_power[COUNT][FRAME_LENGTH/2];
-        int64_t subband_min_power[COUNT][FRAME_LENGTH/2];
-
         memset(subband_rms_power, 0, sizeof(subband_rms_power));
-
-        for(unsigned ch=0;ch<COUNT;ch++){
-            for (unsigned band=1;band < FRAME_LENGTH/2;band++){
-                subband_max_power[ch][band] = 0;
-                subband_min_power[ch][band]  = LONG_LONG_MAX;
-            }
-        }
-
 
         for(unsigned r=0;r<REPS;r++){
 
             mic_array_frame_fft_preprocessed *  current =
                     mic_array_get_next_frequency_domain_frame(c_ds_output, DECIMATOR_COUNT, buffer, audio, dc);
 
-//            unsigned c = dsp_bfp_cls(current->data[0],FRAME_LENGTH*COUNT/2) - 2;
-//            dsp_bfp_shl(current->data[0],FRAME_LENGTH*COUNT/2, c);
+            //TODO channels need one bit of headroom
+            //dsp_bfp_shl(current->data[0], FRAME_LENGTH*FFT_CHANNELS, -1);
 
             for(unsigned i=0;i<FFT_CHANNELS;i++){
                 dsp_fft_forward(current->data[i], FRAME_LENGTH, FFT_SINE_LUT);
@@ -102,97 +91,70 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
             mic_array_frame_frequency_domain * fd_frame = (mic_array_frame_frequency_domain*)current;
 
             for(unsigned ch=0;ch<COUNT;ch++){
-                for (unsigned band=1;band < FRAME_LENGTH/2;band++){
+                for (unsigned band=0;band < FRAME_LENGTH/2;band++){
                     int64_t power = (int64_t)fd_frame->data[ch][band].re *  (int64_t)fd_frame->data[ch][band].re +
                             (int64_t)fd_frame->data[ch][band].im * (int64_t)fd_frame->data[ch][band].im;
-                    power >>= R;
+                    power >>= (R);
                     subband_rms_power[ch][band] += power;
-                    if(subband_max_power[ch][band] < power)
-                        subband_max_power[ch][band] = power;
-                    if(subband_min_power[ch][band] > power)
-                        subband_min_power[ch][band] = power;
-
                 }
             }
         }
-        int64_t mask = 0;
-        for(unsigned ch=0;ch<COUNT;ch++){
-            for (unsigned band=1;band < FRAME_LENGTH/2;band++){
-                mask |= subband_rms_power[ch][band];
-                mask |= subband_max_power[ch][band];
-                mask |= subband_min_power[ch][band];
-            }
-        }
-        int32_t top= mask >> 32;
-        int32_t bottom = mask;
-        unsigned headroom;
-        if(top){
-            headroom = clz(top) - 2;
-        } else {
-            headroom = clz(bottom) + 30;
-        }
-        for(unsigned ch=0;ch<COUNT;ch++){
-            for (unsigned band=1;band < FRAME_LENGTH/2;band++){
-                int64_t t =  subband_rms_power[ch][band] << headroom;
-                subband_rms_power[ch][band] = (int)(sqrt((double)t));
-                t =  subband_max_power[ch][band] << headroom;
-                subband_max_power[ch][band] = (int)(sqrt((double)t));
-                t =  subband_min_power[ch][band] << headroom;
-                subband_min_power[ch][band] = (int)(sqrt((double)t));
-            }
-        }
-        unsigned within_spec_count[COUNT][COUNT];
-        memset(within_spec_count, 0, sizeof(within_spec_count));
 
 #define DEBUG 1
 #if DEBUG
         for (unsigned band=1;band < FRAME_LENGTH/2;band++){
-
-            unsigned ch_a = 0;
-            int64_t a = subband_rms_power[ch_a][band];
-            int64_t a_min = subband_min_power[ch_a][band];
-            int64_t a_max = subband_max_power[ch_a][band];
-            printf("%d %lld %lld %lld ", band, a, a_min, a_max);
-            for(unsigned ch_b=1;ch_b<COUNT;ch_b++){
+            for(unsigned ch_b=0;ch_b<COUNT;ch_b++){
                 int64_t b = subband_rms_power[ch_b][band];
-                int64_t b_min = subband_min_power[ch_b][band];
-                int64_t b_max = subband_max_power[ch_b][band];
-                printf("%lld %lld %lld ", b, b_min, b_max);
+                printf("%.12f ", sqrt((double)b));
             }
             printf("\n");
         }
 #endif
 
+        double rms_error[COUNT][COUNT];
+        memset(rms_error, 0, sizeof(rms_error));
 
-        for (unsigned band=1;band < FRAME_LENGTH/2;band++){
+        //This can be used to restrict the bandwidth
+        unsigned lower_bin = 1;
+        unsigned upper_bin = FRAME_LENGTH/2;
+
+        for (unsigned band=lower_bin;band < upper_bin;band++){
+
+            double mic_power[COUNT];
+            for(unsigned ch=0;ch<COUNT;ch++){
+                int64_t b = subband_rms_power[ch][band];
+                mic_power[ch] = sqrt((double)b);
+            }
+
             for(unsigned ch_a=0;ch_a<COUNT;ch_a++){
-                for(unsigned ch_b=ch_a+1;ch_b<COUNT;ch_b++){
-                    int64_t a = subband_rms_power[ch_a][band];
-                    int64_t b = subband_rms_power[ch_b][band];
-
-                    //check that they are within 6db of each other
-                    unsigned v = ((a/2 < b) && (a > (b/2)));
-                    within_spec_count[ch_a][ch_b] += v;
-                    within_spec_count[ch_b][ch_a] += v;
+                double a = mic_power[ch_a];
+                for(unsigned ch_b=ch_a + 1;ch_b<COUNT;ch_b++){
+                    double b = mic_power[ch_b];
+                    rms_error[ch_a][ch_b] += ((a-b)*(a-b));
                 }
-//                within_spec_count[ch_a[ch_a] += 1;
             }
         }
 
-//        for(unsigned ch_a=0;ch_a<COUNT;ch_a++){
-//            unsigned mic_sum = 0;
-//            for(unsigned ch_b=0;ch_b<COUNT;ch_b++){
-//                printf("%d ", within_spec_count[ch_a][ch_b]);
-//                mic_sum += within_spec_count[ch_a][ch_b];
-//            }
-//            printf("\n");
-//            if(mic_sum > ((COUNT-2) * 16))
-//                printf("Mic %d: pass\n", ch_a);
-//            else
-//                printf("Mic %d: fail\n", ch_a);
-//        }
+        double bin_count = (double)(upper_bin-lower_bin);
+        double max_power_db = DBL_MIN;
+        double min_power_db = DBL_MAX;
+        for(unsigned ch_a=0;ch_a<COUNT;ch_a++){
+            for(unsigned ch_b=ch_a + 1;ch_b<COUNT;ch_b++){
+                double power_db = 20*log10(sqrt((rms_error[ch_a][ch_b])/(bin_count)));
+                max_power_db = fmax(max_power_db, power_db);
+                min_power_db = fmin(min_power_db, power_db);
+            }
+        }
+
+        double diff = max_power_db - min_power_db;
+        if(diff < 12.0){
+            printf("Pass: %fdb spread\n", diff);
+            _Exit(0);
+        } else{
+            printf("Fail: %fdb spread\n", diff);
+            _Exit(1);
+        }
     }
-    _Exit(1);
 }
 
 port p_rst_shared                   = on tile[1]: XS1_PORT_4F; // Bit 0: DAC_RST_N, Bit 1: ETH_RST_N

@@ -168,14 +168,20 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
             }
         }
 
+#define DB_BIG 1000.0
 
-        double min_db_diff = DBL_MAX, max_db_diff = DBL_MIN;
-        double min_r = DBL_MAX, max_r = DBL_MIN;
+        double min_db_diff = DB_BIG, max_db_diff = -DB_BIG;
+        double min_r = DB_BIG, max_r = -DB_BIG;
 
         for(unsigned ch_a=0;ch_a<COUNT;ch_a++){
             for(unsigned ch_b=ch_a + 1;ch_b<COUNT;ch_b++){
                 double beta = sum_xy[ch_a][ch_b] / sum_xx[ch_a];
-                double beta_db = 20*log10(beta);
+                double beta_db;
+                if(beta > 0.0){
+                    beta_db = 20*log10(beta);
+                } else {
+                    beta_db = -DB_BIG;
+                }
                 max_db_diff = fmax(max_db_diff, beta_db);
                 min_db_diff = fmin(min_db_diff, beta_db);
                 printf("beta:%fdb = %f\n", beta_db, beta);

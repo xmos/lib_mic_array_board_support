@@ -69,7 +69,7 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
         for(unsigned i=0;i<16;i++)
             mic_array_get_next_frequency_domain_frame(c_ds_output, DECIMATOR_COUNT, buffer, audio, dc);
 
-#define R 10
+#define R 9
 #define REPS (1<<R)
 
         int64_t subband_rms_power[COUNT][FRAME_LENGTH/2];
@@ -100,7 +100,11 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
             }
         }
 
-#define DEBUG 1
+        //This can be used to restrict the bandwidth
+        unsigned lower_bin = 1;
+        unsigned upper_bin = FRAME_LENGTH/2;
+
+#define DEBUG 0
 #if DEBUG
         for (unsigned band=1;band < FRAME_LENGTH/2;band++){
             for(unsigned ch_b=0;ch_b<COUNT;ch_b++){
@@ -111,42 +115,88 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
         }
 #endif
 
-        double rms_error[COUNT][COUNT];
-        memset(rms_error, 0, sizeof(rms_error));
-
-        //This can be used to restrict the bandwidth
-        unsigned lower_bin = 1;
-        unsigned upper_bin = FRAME_LENGTH/2;
+        double bin_count = (double)(upper_bin-lower_bin);
+        double x_bar[COUNT]={0};
+        double xx_bar[COUNT] = {0};
+        double xy_bar[COUNT][COUNT];
+        memset(xy_bar, 0, sizeof(xy_bar));
 
         for (unsigned band=lower_bin;band < upper_bin;band++){
 
-            double mic_power[COUNT];
+            double m[COUNT];
             for(unsigned ch=0;ch<COUNT;ch++){
                 int64_t b = subband_rms_power[ch][band];
-                mic_power[ch] = sqrt((double)b);
+                m[ch] = sqrt((double)b);
+                x_bar[ch] += m[ch];
+                xx_bar[ch] += (m[ch]*m[ch]);
+            }
+            for(unsigned ch_a=0;ch_a<COUNT;ch_a++){
+                for(unsigned ch_b=ch_a + 1;ch_b<COUNT;ch_b++){
+                    xy_bar[ch_a][ch_b] += (m[ch_a]*m[ch_b]);
+                }
+            }
+        }
+        for(unsigned ch_a=0;ch_a<COUNT;ch_a++){
+            x_bar[ch_a] /= bin_count;
+            xx_bar[ch_a] /= bin_count;
+            for(unsigned ch_b=ch_a + 1;ch_b<COUNT;ch_b++){
+                xy_bar[ch_a][ch_b] /= bin_count;
+            }
+        }
+
+
+        double sum_xx[COUNT] = {0};
+        double sum_xy[COUNT][COUNT];
+        memset(sum_xy, 0, sizeof(sum_xy));
+
+        for (unsigned band=lower_bin;band < upper_bin;band++){
+
+            double m[COUNT];
+            for(unsigned ch=0;ch<COUNT;ch++){
+                int64_t b = subband_rms_power[ch][band];
+                m[ch] = sqrt((double)b);
             }
 
             for(unsigned ch_a=0;ch_a<COUNT;ch_a++){
-                double a = mic_power[ch_a];
+                double a = m[ch_a];
+                sum_xx[ch_a] += ((a-x_bar[ch_a])*(a-x_bar[ch_a]));
+
                 for(unsigned ch_b=ch_a + 1;ch_b<COUNT;ch_b++){
-                    double b = mic_power[ch_b];
-                    rms_error[ch_a][ch_b] += ((a-b)*(a-b));
+                    double b = m[ch_b];
+                    sum_xy[ch_a][ch_b] += ((a-x_bar[ch_a])*(b-x_bar[ch_b]));
                 }
             }
         }
 
-        double bin_count = (double)(upper_bin-lower_bin);
-        double max_power_db = DBL_MIN;
-        double min_power_db = DBL_MAX;
+
+        double min_db_diff = DBL_MAX, max_db_diff = DBL_MIN;
+        double min_r = DBL_MAX, max_r = DBL_MIN;
+
         for(unsigned ch_a=0;ch_a<COUNT;ch_a++){
             for(unsigned ch_b=ch_a + 1;ch_b<COUNT;ch_b++){
-                double power_db = 20*log10(sqrt((rms_error[ch_a][ch_b])/(bin_count)));
-                max_power_db = fmax(max_power_db, power_db);
-                min_power_db = fmin(min_power_db, power_db);
+                double beta = sum_xy[ch_a][ch_b] / sum_xx[ch_a];
+                double beta_db = 20*log10(beta);
+                max_db_diff = fmax(max_db_diff, beta_db);
+                min_db_diff = fmin(min_db_diff, beta_db);
+                printf("beta:%fdb = %f\n", beta_db, beta);
             }
         }
 
-        double diff = max_power_db - min_power_db;
+
+        for(unsigned ch_a=0;ch_a<COUNT;ch_a++){
+            for(unsigned ch_b=ch_a + 1;ch_b<COUNT;ch_b++){
+                double r = (xy_bar[ch_a][ch_b] - x_bar[ch_a]*x_bar[ch_b]) /
+                        sqrt((xx_bar[ch_a] - x_bar[ch_a]*x_bar[ch_a]) *
+                                (xx_bar[ch_b] - x_bar[ch_b]*x_bar[ch_b]));
+                max_r = fmax(max_r, r);
+                min_r = fmin(min_r, r);
+                printf("r: %f\n", r);
+            }
+        }
+
+
+
+        double diff = max_db_diff - min_db_diff;
         if(diff < 12.0){
             printf("Pass: %fdb spread\n", diff);
             _Exit(0);

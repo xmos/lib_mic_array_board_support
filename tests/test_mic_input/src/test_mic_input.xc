@@ -15,6 +15,9 @@
 
 #include <float.h>
 
+#define LOGGING 1
+#define ENABLE_PRECISION_MAXIMISATION 1
+
 //If the decimation factor is changed the the coefs array of decimator_config must also be changed.
 #define DECIMATION_FACTOR   6   //Corresponds to a 48kHz output sample rate
 #define DECIMATOR_COUNT     2   //8 channels requires 2 decimators
@@ -34,6 +37,10 @@ int data[8][THIRD_STAGE_COEFS_PER_STAGE*DECIMATION_FACTOR];
 int your_favourite_window_function(unsigned i, unsigned window_length){
     return((int)((double)INT_MAX*sqrt(0.5*(1.0 - cos(2.0 * 3.14159265359*(double)i / (double)(window_length-2))))));
 }
+
+//This is here until lib_dsp is updated.
+void dsp_bfp_shl2( dsp_complex_t pts[], const uint32_t N,
+                   const int32_t shift_re, const int32_t shift_im );
 
 void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
     unsafe{
@@ -69,7 +76,7 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
         for(unsigned i=0;i<16;i++)
             mic_array_get_next_frequency_domain_frame(c_ds_output, DECIMATOR_COUNT, buffer, audio, dc);
 
-#define R 9
+#define R 10
 #define REPS (1<<R)
 
         int64_t subband_rms_power[COUNT][FRAME_LENGTH/2];
@@ -80,9 +87,21 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
             mic_array_frame_fft_preprocessed *  current =
                     mic_array_get_next_frequency_domain_frame(c_ds_output, DECIMATOR_COUNT, buffer, audio, dc);
 
-            //TODO channels need one bit of headroom
-            //dsp_bfp_shl(current->data[0], FRAME_LENGTH*FFT_CHANNELS, -1);
+            int ch_headroom[COUNT] = {0};
+#if ENABLE_PRECISION_MAXIMISATION
+            for(unsigned channel_pairs=0;channel_pairs<(COUNT+1)/2;channel_pairs++){
+                unsigned dec = (2*channel_pairs)/4;
+                unsigned dec_ch = (2*channel_pairs) - dec*4;
+                int im=0, re = clz(current->metadata[dec].sig_bits[dec_ch])-2;
+                ch_headroom[2*channel_pairs] = re;
 
+                if(2*channel_pairs+1 < COUNT){
+                    im = clz(current->metadata[dec].sig_bits[dec_ch+1])-2;
+                    ch_headroom[2*channel_pairs+1] = im;
+                }
+                dsp_bfp_shl2(current->data[channel_pairs], FRAME_LENGTH, re, im);
+            }
+#endif
             for(unsigned i=0;i<FFT_CHANNELS;i++){
                 dsp_fft_forward(current->data[i], FRAME_LENGTH, FFT_SINE_LUT);
                 dsp_fft_split_spectrum(current->data[i], FRAME_LENGTH);
@@ -94,18 +113,17 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
                 for (unsigned band=0;band < FRAME_LENGTH/2;band++){
                     int64_t power = (int64_t)fd_frame->data[ch][band].re *  (int64_t)fd_frame->data[ch][band].re +
                             (int64_t)fd_frame->data[ch][band].im * (int64_t)fd_frame->data[ch][band].im;
-                    power >>= (R);
+                    power >>= (R + (2*ch_headroom[ch]));
                     subband_rms_power[ch][band] += power;
                 }
             }
         }
 
         //This can be used to restrict the bandwidth
-        unsigned lower_bin = 1;
-        unsigned upper_bin = FRAME_LENGTH/2;
+        unsigned lower_bin = 1;//We never care about the DC and the NQ
+        unsigned upper_bin = FRAME_LENGTH/2 ;
 
-#define DEBUG 0
-#if DEBUG
+#if LOGGING
         for (unsigned band=1;band < FRAME_LENGTH/2;band++){
             for(unsigned ch_b=0;ch_b<COUNT;ch_b++){
                 int64_t b = subband_rms_power[ch_b][band];
@@ -116,7 +134,7 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
 #endif
 
         double bin_count = (double)(upper_bin-lower_bin);
-        double x_bar[COUNT]={0};
+        double x_bar[COUNT] = {0};
         double xx_bar[COUNT] = {0};
         double xy_bar[COUNT][COUNT];
         memset(xy_bar, 0, sizeof(xy_bar));
@@ -143,7 +161,6 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
                 xy_bar[ch_a][ch_b] /= bin_count;
             }
         }
-
 
         double sum_xx[COUNT] = {0};
         double sum_xy[COUNT][COUNT];
@@ -184,10 +201,11 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
                 }
                 max_db_diff = fmax(max_db_diff, beta_db);
                 min_db_diff = fmin(min_db_diff, beta_db);
+#if LOGGING
                 printf("beta:%fdb = %f\n", beta_db, beta);
+#endif
             }
         }
-
 
         for(unsigned ch_a=0;ch_a<COUNT;ch_a++){
             for(unsigned ch_b=ch_a + 1;ch_b<COUNT;ch_b++){
@@ -196,11 +214,11 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
                                 (xx_bar[ch_b] - x_bar[ch_b]*x_bar[ch_b]));
                 max_r = fmax(max_r, r);
                 min_r = fmin(min_r, r);
+#if LOGGING
                 printf("r: %f\n", r);
+#endif
             }
         }
-
-
 
         double diff = max_db_diff - min_db_diff;
         if(diff < 12.0){

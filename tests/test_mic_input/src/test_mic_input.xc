@@ -13,8 +13,6 @@
 #include "mic_array.h"
 #include "mic_array_board_support.h"
 
-#include <float.h>
-
 #define LOGGING 1
 #define ENABLE_PRECISION_MAXIMISATION 1
 
@@ -187,7 +185,7 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
 
 #define DB_BIG 1000.0
 
-        double min_db_diff = DB_BIG, max_db_diff = -DB_BIG;
+        double max_db_diff = -DB_BIG;
         double min_r = DB_BIG, max_r = -DB_BIG;
 
         for(unsigned ch_a=0;ch_a<COUNT;ch_a++){
@@ -199,8 +197,7 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
                 } else {
                     beta_db = -DB_BIG;
                 }
-                max_db_diff = fmax(max_db_diff, beta_db);
-                min_db_diff = fmin(min_db_diff, beta_db);
+                max_db_diff = fmax(max_db_diff, fabs(beta_db));
 #if LOGGING
                 printf("beta:%fdb = %f\n", beta_db, beta);
 #endif
@@ -220,7 +217,7 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
             }
         }
 
-        double diff = max_db_diff - min_db_diff;
+        double diff = max_db_diff;
         if(diff < 12.0){
             printf("Pass: %fdb spread\n", diff);
             _Exit(0);

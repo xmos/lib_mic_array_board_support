@@ -13,8 +13,11 @@
 #include "mic_array.h"
 #include "mic_array_board_support.h"
 
-#define LOGGING 1
-#define ENABLE_PRECISION_MAXIMISATION 1
+#define ALLOWED_DB_DIFFERENCE (12.0)    //Float in dB
+#define LOGGING               (1)       //Enable logging(verbose) output
+
+
+
 
 //If the decimation factor is changed the the coefs array of decimator_config must also be changed.
 #define DECIMATION_FACTOR   6   //Corresponds to a 48kHz output sample rate
@@ -24,6 +27,7 @@
 #define FRAME_LENGTH (1<<MIC_ARRAY_MAX_FRAME_SIZE_LOG2)
 #define FFT_SINE_LUT dsp_sine_128
 #define FFT_CHANNELS ((COUNT+1)/2)
+#define ENABLE_PRECISION_MAXIMISATION 1
 
 on tile[0]: out port p_pdm_clk              = XS1_PORT_1E;
 on tile[0]: in buffered port:32 p_pdm_mics  = XS1_PORT_8B;
@@ -71,7 +75,7 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
 
         mic_array_init_frequency_domain_frame(c_ds_output, DECIMATOR_COUNT, buffer, audio, dc);
 
-        for(unsigned i=0;i<16;i++)
+        for(unsigned i=0;i<128;i++)
             mic_array_get_next_frequency_domain_frame(c_ds_output, DECIMATOR_COUNT, buffer, audio, dc);
 
 #define R 10
@@ -121,15 +125,26 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
         unsigned lower_bin = 1;//We never care about the DC and the NQ
         unsigned upper_bin = FRAME_LENGTH/2 ;
 
-#if LOGGING
+        double total_power = 0.0;
         for (unsigned band=1;band < FRAME_LENGTH/2;band++){
             for(unsigned ch_b=0;ch_b<COUNT;ch_b++){
                 int64_t b = subband_rms_power[ch_b][band];
-                printf("%.12f ", sqrt((double)b));
+                double p = sqrt((double)b);
+
+#if LOGGING
+                printf("%.12f ", p);
+#endif
+                total_power += p;
             }
             printf("\n");
         }
-#endif
+        if(total_power < 10000.0){
+            for(unsigned i=0;i<COUNT;i++){
+                printf("Microphone %d absent\n", i);
+            }
+            printf("Fail: No microphones detected\n");
+            _Exit(1);
+        }
 
         double bin_count = (double)(upper_bin-lower_bin);
         double x_bar[COUNT] = {0};
@@ -185,6 +200,11 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
 
 #define DB_BIG 1000.0
 
+        //This is for tracking the failing pairs.
+        //In the end the broken one(s) should have the highest failure rate.
+        unsigned mic_failed[COUNT] = {0};
+        unsigned failure_count = 0;
+
         double max_db_diff = -DB_BIG;
         double min_r = DB_BIG, max_r = -DB_BIG;
 
@@ -197,7 +217,14 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
                 } else {
                     beta_db = -DB_BIG;
                 }
-                max_db_diff = fmax(max_db_diff, fabs(beta_db));
+                beta_db = fabs(beta_db);
+                max_db_diff = fmax(max_db_diff, beta_db);
+
+                if(beta_db > ALLOWED_DB_DIFFERENCE){
+                    mic_failed[ch_a]++;
+                    mic_failed[ch_b]++;
+                    failure_count += 2;
+                }
 #if LOGGING
                 printf("beta:%fdb = %f\n", beta_db, beta);
 #endif
@@ -217,12 +244,21 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
             }
         }
 
+        for(unsigned i=0;i<COUNT;i++){
+            if ((failure_count>0) && mic_failed[i]){
+                printf("Chance of failure for mic %d: %f\n", i,
+                        100.0* (float)mic_failed[i] / (float)failure_count);
+            } else{
+                printf("Microphone %d working\n", i);
+            }
+        }
+
         double diff = max_db_diff;
-        if(diff < 12.0){
-            printf("Pass: %fdb spread\n", diff);
+        if(diff < ALLOWED_DB_DIFFERENCE){
+            printf("Pass: %fdB spread\n", diff);
             _Exit(0);
         } else{
-            printf("Fail: %fdb spread\n", diff);
+            printf("Fail: %fdB spread\n", diff);
             _Exit(1);
         }
     }

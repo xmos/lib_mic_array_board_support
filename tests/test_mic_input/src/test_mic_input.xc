@@ -2,7 +2,6 @@
 #include <xscope.h>
 #include <platform.h>
 #include <xs1.h>
-#include <xs2_su_registers.h>
 #include <string.h>
 #include <xclib.h>
 #include <stdint.h>
@@ -13,11 +12,9 @@
 #include "mic_array.h"
 #include "mic_array_board_support.h"
 
-#define ALLOWED_DB_DIFFERENCE (12.0)    //Float in dB
-#define LOGGING               (1)       //Enable logging(verbose) output
-
-
-
+#define ALLOWED_DB_DIFFERENCE (12.0)        //Float in dB
+#define LOGGING               (1)           //Enable logging(verbose) output
+#define NUMBER_OF_AVG_ITTERATIONS_LOG2 (10) //Controls the time to build up the spectrum
 
 //If the decimation factor is changed the the coefs array of decimator_config must also be changed.
 #define DECIMATION_FACTOR   6   //Corresponds to a 48kHz output sample rate
@@ -75,16 +72,14 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
 
         mic_array_init_frequency_domain_frame(c_ds_output, DECIMATOR_COUNT, buffer, audio, dc);
 
+        //This makes the test wait until the DC offset has settled down.
         for(unsigned i=0;i<128;i++)
             mic_array_get_next_frequency_domain_frame(c_ds_output, DECIMATOR_COUNT, buffer, audio, dc);
-
-#define R 10
-#define REPS (1<<R)
 
         int64_t subband_rms_power[COUNT][FRAME_LENGTH/2];
         memset(subband_rms_power, 0, sizeof(subband_rms_power));
 
-        for(unsigned r=0;r<REPS;r++){
+        for(unsigned r=0;r<(1<<NUMBER_OF_AVG_ITTERATIONS_LOG2);r++){
 
             mic_array_frame_fft_preprocessed *  current =
                     mic_array_get_next_frequency_domain_frame(c_ds_output, DECIMATOR_COUNT, buffer, audio, dc);
@@ -115,7 +110,7 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
                 for (unsigned band=0;band < FRAME_LENGTH/2;band++){
                     int64_t power = (int64_t)fd_frame->data[ch][band].re *  (int64_t)fd_frame->data[ch][band].re +
                             (int64_t)fd_frame->data[ch][band].im * (int64_t)fd_frame->data[ch][band].im;
-                    power >>= (R + (2*ch_headroom[ch]));
+                    power >>= (NUMBER_OF_AVG_ITTERATIONS_LOG2 + (2*ch_headroom[ch]));
                     subband_rms_power[ch][band] += power;
                 }
             }

@@ -83,6 +83,7 @@ void mabs_button_and_led_server(server interface mabs_led_button_if lb[n_lb],
             break;
         }
 
+#if defined(MIC_BOARD_SUPPORT_LED_PORTS)
         case t when timerafter(time) :> unsigned now :{
             time = now + MIN_POLL_TIME_US;
             unsigned elapsed = (now-start_of_time)&LED_MAX_COUNT;
@@ -116,6 +117,7 @@ void mabs_button_and_led_server(server interface mabs_led_button_if lb[n_lb],
 #endif
             break;
         }
+#endif
         /*
         default:{
             unsigned now;

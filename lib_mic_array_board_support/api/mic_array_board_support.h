@@ -17,7 +17,7 @@
 #else
 #define MIC_BOARD_SUPPORT_LED_PORTS     {PORT_LED0_TO_7, PORT_LED8, PORT_LED9, PORT_LED10_TO_12}
 #endif
-#else
+#elif defined(PORT_LED_12)
 #define MIC_BOARD_SUPPORT_LED_PORTS     {PORT_LED0_TO_7, PORT_LED8_TO_11, PORT_LED_12}
 #endif
 
@@ -34,6 +34,9 @@ typedef enum {
 
 /** Structure to describe the LED ports*/
 typedef struct {
+#if !defined(MIC_BOARD_SUPPORT_LED_PORTS)
+    int unused;
+#else
 #if defined(PORT_LED0_TO_7)
     out port p_led0to7;     /**<LED 0 to 7. */
 #endif
@@ -55,6 +58,7 @@ typedef struct {
 #if defined(PORT_LED_OEN)
     out port p_leds_oen;    /**<LED Output enable (active low). */
 #endif
+#endif
 } mabs_led_ports_t;
 
 /**
@@ -65,6 +69,7 @@ typedef enum {
    WIFI_MIC_ARRAY,
    SMART_MIC_BASE,
    SMART_MIC_BASE_4TILE,
+   MIC_ARRAY_BASE_4TILE_BGA,
 } mabs_board_t;
 
 

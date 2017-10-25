@@ -19,7 +19,12 @@
 
 [[combinable]]
 void mabs_button_and_led_server(server interface mabs_led_button_if lb[n_lb],
-        static const unsigned n_lb, mabs_led_ports_t &leds,
+        static const unsigned n_lb,
+#ifndef MIC_BOARD_LED_STCP
+        mabs_led_ports_t &leds,
+#else
+        client interface ma_bga167_led_if leds,
+#endif
         in port p_buttons){
 
     mabs_button_state_t latest_button_pressed = BUTTON_RELEASED;
@@ -40,7 +45,7 @@ void mabs_button_and_led_server(server interface mabs_led_button_if lb[n_lb],
     unsigned button_val;
     p_buttons :> button_val;
     while(1){
-// #pragma ordered
+        //[[ordered]]
         select {
         case lb[int i].set_led_brightness(unsigned led, unsigned brightness):{
             if(led < MIC_BOARD_SUPPORT_LED_COUNT)
@@ -83,12 +88,17 @@ void mabs_button_and_led_server(server interface mabs_led_button_if lb[n_lb],
             break;
         }
 
-#if defined(MIC_BOARD_SUPPORT_LED_PORTS)
         case t when timerafter(time) :> unsigned now :{
             time = now + MIN_POLL_TIME_US;
             unsigned elapsed = (now-start_of_time)&LED_MAX_COUNT;
             elapsed>>=(20-8);
             unsigned d=0;
+#if defined(MIC_BOARD_LED_STCP)
+
+            for(unsigned i=0; i<13; i++)
+                d=(d>>1)+(0x1000*(led_brightness[i]<=elapsed));
+            leds.set_leds(d);
+#else
 #if defined(PORT_LED0_TO_7)
             for(unsigned i=0;i<8;i++)
                 d=(d>>1)+(0x80*(led_brightness[i]<=elapsed));
@@ -115,9 +125,9 @@ void mabs_button_and_led_server(server interface mabs_led_button_if lb[n_lb],
 #if defined(PORT_LED_12)
             leds.p_led12 <: (led_brightness[12]<=elapsed);
 #endif
+#endif
             break;
         }
-#endif
         /*
         default:{
             unsigned now;

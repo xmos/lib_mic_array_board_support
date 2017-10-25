@@ -19,6 +19,10 @@
 #endif
 #elif defined(PORT_LED_12)
 #define MIC_BOARD_SUPPORT_LED_PORTS     {PORT_LED0_TO_7, PORT_LED8_TO_11, PORT_LED_12}
+#else
+#define MIC_BOARD_LED_STCP on tile[3] : XS1_PORT_1A
+#define MIC_BOARD_LED_SHCP on tile[3] : XS1_PORT_1B
+#define MIC_BOARD_LED_DATA on tile[3] : XS1_PORT_1E;
 #endif
 
 /** This type is used to describe an event on a button.
@@ -33,10 +37,8 @@ typedef enum {
 #define BUTTON_EVENT_NONE (-1)
 
 /** Structure to describe the LED ports*/
+#ifndef MIC_BOARD_LED_STCP
 typedef struct {
-#if !defined(MIC_BOARD_SUPPORT_LED_PORTS)
-    int unused;
-#else
 #if defined(PORT_LED0_TO_7)
     out port p_led0to7;     /**<LED 0 to 7. */
 #endif
@@ -58,8 +60,8 @@ typedef struct {
 #if defined(PORT_LED_OEN)
     out port p_leds_oen;    /**<LED Output enable (active low). */
 #endif
-#endif
 } mabs_led_ports_t;
+#endif
 
 /**
  * Supported board types
@@ -71,7 +73,6 @@ typedef enum {
    SMART_MIC_BASE_4TILE,
    MIC_ARRAY_BASE_4TILE_BGA,
 } mabs_board_t;
-
 
 
 /** Configure the PLL for the specified board.
@@ -116,18 +117,34 @@ interface mabs_led_button_if {
           mabs_button_state_t &pressed);
 };
 
+#ifdef MIC_BOARD_LED_STCP
+interface ma_bga167_led_if {
+  void set_leds(uint16_t led_value);
+};
+
+[[combinable]]
+void ma_bga167_led_driver(server interface ma_bga167_led_if led);
+
+#endif
+
 /** A task to handle the LEDs and buttons of a microphone array board.
  *
  * This task can be combined with other tasks.
  * 
  * \param lb          An array of client interfaces.
  * \param n_lb        The number of client tasks connected to this server.
- * \param leds        The structure containing the ports used to drive the LEDs.
+ * \param leds        The structure containing the ports used to drive the LEDs,
+ *                    or interface to the LED driver task if the BGA167 board.
  * \param p_buttons   The port to which the buttons are mapped.
  */
 [[combinable]]
-void mabs_button_and_led_server(server interface mabs_led_button_if lb[n_lb], static const unsigned n_lb,
-        mabs_led_ports_t &leds, in port p_buttons);
-
+void mabs_button_and_led_server(server interface mabs_led_button_if lb[n_lb],
+        static const unsigned n_lb,
+#ifndef MIC_BOARD_LED_STCP
+        mabs_led_ports_t &leds,
+#else
+        client interface ma_bga167_led_if leds,
+#endif
+        in port p_buttons);
 
 #endif /* MIC_ARRAY_BOARD_SUPPORT_H_ */

@@ -1,3 +1,5 @@
+// Copyright (c) 2015-2017, XMOS Ltd, All rights reserved
+
 #include "mic_array_board_support.h"
 
 #ifdef MIC_BOARD_LED_STCP
@@ -111,7 +113,7 @@ static void led_driver(out port stcp, out port shcp, out port data, uint16_t led
 }
 
 [[combinable]]
-void ma_bga167_led_driver(server interface ma_bga167_led_if leds)
+void mabs_bga167_led_driver(server interface ma_bga167_led_if leds)
 {
     while (1) {
         select {

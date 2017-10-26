@@ -118,12 +118,27 @@ interface mabs_led_button_if {
 };
 
 #ifdef MIC_BOARD_LED_STCP
+
+/** This interface is used to connect the mabs_button_and_led_server
+ * task to the ma_bga167_led_driver task, specifically for the
+ * BGA167 mic array board. This is necessary due to the fact that
+ * the buttons and LEDs are on different tiles.
+ */
 interface ma_bga167_led_if {
   void set_leds(uint16_t led_value);
 };
 
+/** A task to drive the LEDs on the BGA167 mic array board.
+ *
+ * This task must be started in main on the tile that the LEDs
+ * are connected to. On the BGA167 mic array board this is
+ * tile 3.
+ *
+ * \param leds        Interface to the mabs_button_and_led_server task.
+ * task.
+ */
 [[combinable]]
-void ma_bga167_led_driver(server interface ma_bga167_led_if led);
+void mabs_bga167_led_driver(server interface ma_bga167_led_if led);
 
 #endif
 
@@ -134,7 +149,8 @@ void ma_bga167_led_driver(server interface ma_bga167_led_if led);
  * \param lb          An array of client interfaces.
  * \param n_lb        The number of client tasks connected to this server.
  * \param leds        The structure containing the ports used to drive the LEDs,
- *                    or interface to the LED driver task if the BGA167 board.
+ *                    OR, when on the BGA167 mic array board, the interface to
+ *                    the ma_bga167_led_driver task.
  * \param p_buttons   The port to which the buttons are mapped.
  */
 [[combinable]]

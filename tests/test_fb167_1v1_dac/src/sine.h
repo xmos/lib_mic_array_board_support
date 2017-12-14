@@ -1,5 +1,5 @@
 // Copyright (c) 2015-2016, XMOS Ltd, All rights reserved
-static unsigned int i2s_sine[100] =
+static unsigned int i2s_sine[SINE_TABLE_SIZE] =
 {
     0x0100da00,0x0200b000,0x02fe8100,0x03f94b00,0x04f01100,
     0x05e1da00,0x06cdb200,0x07b2aa00,0x088fdb00,0x09646600,

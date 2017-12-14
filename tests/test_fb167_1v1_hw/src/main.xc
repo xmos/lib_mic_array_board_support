@@ -72,7 +72,6 @@ void buttons_test(void) {
   int button_val;
   int buttons_active = 1;
   unsigned buttons_timeout;
-  unsigned time;
   timer button_tmr;
 
   p_buttons :> button_val;

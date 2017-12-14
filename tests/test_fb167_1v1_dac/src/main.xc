@@ -9,8 +9,9 @@
 #include "otp_board_info.h"
 #include "i2c.h"
 #include "i2s.h"
-#include "sine.h"
 
+#define SINE_TABLE_SIZE 100
+#include "sine.h"
 
 #define I2S_TILE 2
 // PDM clock and data
@@ -95,8 +96,8 @@ void i2s_handler(server i2s_callback_if i2s,
     case i2s.send(size_t index) -> int32_t sample:
       sample = i2s_sine[sine_count[index]>>8];
       sine_count[index] += sine_inc[index];
-      if (sine_count[index] >= 100 * 256) {
-          sine_count[index] -= 100 * 256;
+      if (sine_count[index] >= SINE_TABLE_SIZE * 256) {
+          sine_count[index] -= SINE_TABLE_SIZE * 256;
       }
       break;
     }
@@ -111,7 +112,6 @@ void button_chk(void) {
 	int button_val;
 	int buttons_active = 1;
 	unsigned buttons_timeout;
-	unsigned time;
 	timer button_tmr;
 
 	p_buttons :> button_val;

@@ -89,7 +89,7 @@ void mabs_button_and_led_server(server interface mabs_led_button_if lb[n_lb],
         }
 
         case t when timerafter(time) :> unsigned now :{
-            time = now + MIN_POLL_TIME_US;
+            time = now + 100*MIN_POLL_TIME_US;
             unsigned elapsed = (now-start_of_time)&LED_MAX_COUNT;
             elapsed>>=(20-8);
             unsigned d=0;

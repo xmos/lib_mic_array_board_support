@@ -4,4 +4,4 @@ def use_module(bld):
         source=source,
         includes=['api'],
         depends_on=['lib_i2c(>=4.0.0)'],
-        version='2.2.3')
+        version='2.3.0')

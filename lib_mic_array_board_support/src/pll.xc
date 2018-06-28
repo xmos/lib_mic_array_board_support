@@ -21,6 +21,8 @@ void mabs_init_pll(client i2c_master_if i2c, mabs_board_t board){
 
     case SMART_MIC_BASE:
     case WIFI_MIC_ARRAY:
+    case SMART_MIC_BASE_4TILE:
+    case MIC_ARRAY_BASE_4TILE_BGA:
         // SI5351A Register Addresses
         #define SI5351A_OE_CTRL      (0x03) // Register 3  - Output Enable Control
         #define SI5351A_FANOUT_EN    (0xBB) // Register 187 - Fanout Enable Control

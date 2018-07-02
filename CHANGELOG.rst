@@ -1,6 +1,11 @@
 Microphone array board support library change log
 =================================================
 
+2.2.4
+-----
+
+  * CHANGE: Updated dependencies
+
 2.2.3
 -----
 

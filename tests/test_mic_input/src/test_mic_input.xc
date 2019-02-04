@@ -26,14 +26,14 @@
 #define FFT_CHANNELS ((COUNT+1)/2)
 #define ENABLE_PRECISION_MAXIMISATION 1
 
-on tile[0]: out port p_pdm_clk              = XS1_PORT_1E;
+on tile[0]: out port p_pdm_clk              = XS1_PORT_1L;
 #if DDR
-on tile[0]: in buffered port:32 p_pdm_mics  = XS1_PORT_4D;
+on tile[0]: in buffered port:32 p_pdm_mics  = XS1_PORT_4E;
 on tile[0]: clock pdmclk6                   = XS1_CLKBLK_3;
 #else
 on tile[0]: in buffered port:32 p_pdm_mics  = XS1_PORT_8B;
 #endif
-on tile[0]: in port p_mclk                  = XS1_PORT_1F;
+on tile[0]: in port p_mclk_in               = XS1_PORT_1K;
 on tile[0]: clock pdmclk                    = XS1_CLKBLK_2;
 
 int data[8][THIRD_STAGE_COEFS_PER_STAGE*DECIMATION_FACTOR];
@@ -278,26 +278,38 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
     }
 }
 
-port p_rst_shared                   = on tile[1]: XS1_PORT_4F; // Bit 0: DAC_RST_N, Bit 1: ETH_RST_N
-port p_i2c                          = on tile[1]: XS1_PORT_4E; // Bit 0: SCLK, Bit 1: SDA
+on tile[0] : clock mclk_internal = XS1_CLKBLK_5;
+
+void set_node_pll_reg(tileref tile_ref, unsigned reg_val){
+    write_sswitch_reg(get_tile_id(tile_ref), XS1_SSWITCH_PLL_CTL_NUM, reg_val);
+}
+
+void run_clock(void) {
+    configure_clock_xcore(mclk_internal, 10); // 24.576 MHz
+    configure_port_clock_output(p_mclk_in, mclk_internal);
+    start_clock(mclk_internal);
+}
+
+// Nominal setting is ref div = 25, fb_div = 1024, op_div = 2
+// PCF Freq 0.96MHz
+
+#define PLL_NOM  0xC003FF18 // This is 3.072MHz
+
+void set_pll(void) {
+    set_node_pll_reg(tile[0], PLL_NOM);
+    run_clock();
+}
+
 int main() {
-    chan c_sync;
-    i2c_master_if i_i2c[1];
+
     par {
-        on tile[1]: i2c_master_single_port(i_i2c, 1, p_i2c, 100, 0, 1, 0);
-        on tile[1]: {
-            p_rst_shared <: 0x00;
-            mabs_init_pll(i_i2c[0], SMART_MIC_BASE);
-            delay_seconds(5);
-            c_sync <: 1;
-        }
 
-        on tile[0]:{
-            c_sync :> int;
-            stop_clock(pdmclk);
+	on tile[0]:{
 
+			stop_clock(pdmclk);
+			set_pll();
 #if DDR
-            mic_array_setup_ddr(pdmclk, pdmclk6, p_mclk, p_pdm_clk, p_pdm_mics, 8);
+            mic_array_setup_ddr(pdmclk, pdmclk6, p_mclk_in, p_pdm_clk, p_pdm_mics, 8);
 #else
 /*          configure_clock_src_divide(pdmclk, p_mclk, 4);
             configure_port_clock_output(p_pdm_clk, pdmclk);

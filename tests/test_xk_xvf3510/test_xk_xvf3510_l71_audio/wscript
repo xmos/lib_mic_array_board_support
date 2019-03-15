@@ -5,10 +5,10 @@ from waflib.Build import BuildContext, CleanContext
 
 def configure(conf):
     conf.load('xwaf.compiler_xcc')
-    conf.env.PROJECT_ROOT = '../..'
+    conf.env.PROJECT_ROOT = '../../..'
 
 def build(bld):
-    bld.env.PROJECT_ROOT = '../../../'
+    bld.env.PROJECT_ROOT = '../../../../'
     bld.env.TARGET_ARCH = 'config/XK_XVF3510_L71.xn'
     bld.env.XCC_FLAGS = ['-O2', '-g', '-Wall', '-Wno-timing', '-fcmdline-buffer-bytes=512',
                          '-report', '-save-temps', '-DDEBUG_PRINT_ENABLE', '-march=xs2a']

@@ -15,6 +15,7 @@
 on tile[1]: port p_scl = PORT_I2C_SCL;
 on tile[1]: port p_sda = PORT_I2C_SDA;
 
+#define DEVICE_ADDRESS  0x20
 #define MUTE_BUTTON     0x01
 #define VOL_DOWN_BUTTON 0x02
 #define ACTION_BUTTON   0x04
@@ -39,7 +40,7 @@ void test_buttons()
             while(1)
             {
                 detected_press = 0;
-                REGREAD(0x20, 0, op);
+                REGREAD(DEVICE_ADDRESS, 0, op);
                 if((op & VOL_UP_BUTTON) == 0)
                 {
                     debug_printf("Volume Up button pressed\n");
@@ -63,7 +64,7 @@ void test_buttons()
                     debug_printf("Mute button pressed\n");
                     detected_press = 1;
                     int config;
-                    REGREAD(0x20, 6, config);
+                    REGREAD(DEVICE_ADDRESS, 6, config);
                     num_presses[3] += 1;
                     if(mic_mute == 0)
                     {
@@ -75,7 +76,7 @@ void test_buttons()
                         config |= 0x10; //set bit 4(mic_off) of config0 to 1
                         mic_mute = 0;
                     }
-                    REGWRITE(0x20, 6, config)
+                    REGWRITE(DEVICE_ADDRESS, 6, config)
                     
                 }
                 //wait_for_button_release
@@ -83,7 +84,7 @@ void test_buttons()
                 {
                     do
                     {
-                        REGREAD(0x20, 0, op);
+                        REGREAD(DEVICE_ADDRESS, 0, op);
                     }while(((op & VOL_UP_BUTTON) == 0) || ((op & VOL_DOWN_BUTTON) == 0) || ((op & ACTION_BUTTON) == 0) || ((op & MUTE_BUTTON) == 0));
                 }
                 //check if all buttons have been pressed atleast once
@@ -103,10 +104,10 @@ void test_buttons()
 
                     op = 0xFF;
                     while ((op & MUTE_BUTTON) != 0){
-                        REGREAD(0x20, 0, op);
+                        REGREAD(DEVICE_ADDRESS, 0, op);
                     };
                     int config = 0x10; //set bit 4(mic_off) of config0 to 1
-                    REGWRITE(0x20, 6, config)
+                    REGWRITE(DEVICE_ADDRESS, 6, config)
 
                     debug_printf("PASS\n");
                     exit(0);

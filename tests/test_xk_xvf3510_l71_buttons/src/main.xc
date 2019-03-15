@@ -47,19 +47,19 @@ void test_buttons()
                 }
                 if((op & vol_dn) == 0)
                 {
-                    debug_printf("volume down button pressed\n");
+                    debug_printf("Volume Down button pressed\n");
                     detected_press = 1;
                     num_presses[1] += 1;
                 }
                 if((op & action) == 0)
                 {
-                    debug_printf("action button pressed\n");
+                    debug_printf("Action button pressed\n");
                     detected_press = 1;
                     num_presses[2] += 1;
                 }
                 if((op & mute) == 0)
                 {
-                    debug_printf("mute button pressed\n");
+                    debug_printf("Mute button pressed\n");
                     detected_press = 1;
                     int config;
                     REGREAD(0x20, 6, config);
@@ -106,7 +106,7 @@ void test_buttons()
                 {
                     if(num_presses[i] >= 4)
                     {
-                        debug_printf("button pressed more than 4 times\n");
+                        debug_printf("Button pressed more than 4 times\n");
                         debug_printf("FAIL\n");
                         exit(1);
                     }

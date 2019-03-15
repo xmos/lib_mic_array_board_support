@@ -1,0 +1,22 @@
+import os
+import fnmatch
+from waflib import Build, Options
+from waflib.Build import BuildContext, CleanContext
+
+def configure(conf):
+    conf.load('xwaf.compiler_xcc')
+    conf.env.PROJECT_ROOT = '../..'
+
+def build(bld):
+    bld.env.PROJECT_ROOT = '../../../'
+    bld.env.TARGET_ARCH = 'config/RPI_HAT_60QFN.xn'
+    bld.env.XCC_FLAGS = ['-O2', '-g', '-Wall', '-Wno-timing', '-fcmdline-buffer-bytes=512',
+                         '-report', '-save-temps', '-DDEBUG_PRINT_ENABLE', '-march=xs2a']
+    bld.env.XCC_MAP_FLAGS = ['-report',
+                             '-Xmapper', '--map',
+                             '-Xmapper', 'mapfile']
+    bld.program(source=['src/main.xc'],
+                includes=['config'],
+                depends_on=['lib_i2c', 'lib_logging']
+                )
+

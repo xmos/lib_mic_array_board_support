@@ -84,7 +84,7 @@ on tile[0]: in buffered port:32 p_lrclk = PORT_I2S_LRCLK;
 #define BEEP_LENGTH 0x75300
 
 #define MIN_SNR_DB 30
- 
+
 on tile[1]: port p_scl = PORT_I2C_SCL;
 on tile[1]: port p_sda = PORT_I2C_SDA;
 
@@ -263,6 +263,7 @@ void create_i2s_slave(client i2s_callback_if i_i2s)
     start_clock(mclk);
     i2s_slave(i_i2s, p_dout, 1, p_din, 1, p_bclk, p_lrclk, bclk);
 }
+
 double compute_snr(dsp_complex_t* sig)
 {
         dsp_fft_bit_reverse(sig, FFT_LENGTH);
@@ -353,18 +354,18 @@ int main()
 {  
     interface i2s_callback_if i_i2s;
 
-        par{
-            on tile[1]: {
-                configure_dac();
-                generate_sine();
-            }
-            on tile[0]: {
-                delay_seconds(2);
-                par{
-                    create_i2s_slave(i_i2s);
-                    i2s_process(i_i2s);
-                }
+    par{
+        on tile[1]: {
+            configure_dac();
+            generate_sine();
+        }
+        on tile[0]: {
+            delay_seconds(2);
+            par{
+                create_i2s_slave(i_i2s);
+                i2s_process(i_i2s);
             }
         }
+    }
     return 0;
 }

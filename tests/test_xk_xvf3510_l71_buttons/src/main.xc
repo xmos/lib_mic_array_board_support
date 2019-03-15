@@ -15,6 +15,11 @@
 on tile[1]: port p_scl = PORT_I2C_SCL;
 on tile[1]: port p_sda = PORT_I2C_SDA;
 
+#define MUTE_BUTTON     0x01
+#define VOL_DOWN_BUTTON 0x02
+#define ACTION_BUTTON   0x04
+#define VOL_UP_BUTTON   0x08
+#include "print.h"
 void test_buttons()
 {
     i2c_master_if i_i2c[1];
@@ -24,11 +29,7 @@ void test_buttons()
         {
             unsigned char data = 0;
             i2c_regop_res_t i2c_res;
-            int vol_up = 8; //1
-            int vol_dn = 2;
-            int action = 4;
-            int mute = 1; //8 TODO check why mute and vol_up seem to be interchanged
-            int op;
+            int op = 0xFF;
             int detected_press = 0;
             int mic_mute = 0;
             int num_presses[4] = {0};
@@ -39,25 +40,25 @@ void test_buttons()
             {
                 detected_press = 0;
                 REGREAD(0x20, 0, op);
-                if((op & vol_up) == 0)
+                if((op & VOL_UP_BUTTON) == 0)
                 {
                     debug_printf("Volume Up button pressed\n");
                     detected_press = 1;
                     num_presses[0] += 1;
                 }
-                if((op & vol_dn) == 0)
+                if((op & VOL_DOWN_BUTTON) == 0)
                 {
                     debug_printf("Volume Down button pressed\n");
                     detected_press = 1;
                     num_presses[1] += 1;
                 }
-                if((op & action) == 0)
+                if((op & ACTION_BUTTON) == 0)
                 {
                     debug_printf("Action button pressed\n");
                     detected_press = 1;
                     num_presses[2] += 1;
                 }
-                if((op & mute) == 0)
+                if((op & MUTE_BUTTON) == 0)
                 {
                     debug_printf("Mute button pressed\n");
                     detected_press = 1;
@@ -74,7 +75,6 @@ void test_buttons()
                         config |= 0x10; //set bit 4(mic_off) of config0 to 1
                         mic_mute = 0;
                     }
-
                     REGWRITE(0x20, 6, config)
                     
                 }
@@ -84,7 +84,7 @@ void test_buttons()
                     do
                     {
                         REGREAD(0x20, 0, op);
-                    }while(((op & vol_up) == 0) || ((op & vol_dn) == 0) || ((op & action) == 0) || ((op & mute) == 0));
+                    }while(((op & VOL_UP_BUTTON) == 0) || ((op & VOL_DOWN_BUTTON) == 0) || ((op & ACTION_BUTTON) == 0) || ((op & MUTE_BUTTON) == 0));
                 }
                 //check if all buttons have been pressed atleast once
                 all_buttons_pressed = 1;
@@ -98,6 +98,16 @@ void test_buttons()
                 }
                 if(all_buttons_pressed == 1)
                 {
+                    op = 0xFF;
+                    debug_printf("Press mute button again to exit the test\n");
+
+                    op = 0xFF;
+                    while ((op & MUTE_BUTTON) != 0){
+                        REGREAD(0x20, 0, op);
+                    };
+                    int config = 0x10; //set bit 4(mic_off) of config0 to 1
+                    REGWRITE(0x20, 6, config)
+
                     debug_printf("PASS\n");
                     exit(0);
                 }

@@ -36,6 +36,7 @@ void test_buttons()
             int num_presses[4] = {0};
             int all_buttons_pressed = 0;
 
+            debug_printf("Press all the four buttons sequentially\n");
 
             while(1)
             {
@@ -106,7 +107,7 @@ void test_buttons()
                 if(all_buttons_pressed == 1)
                 {
                     op = 0xFF;
-                    debug_printf("Press mute button again to exit the test\n");
+                    debug_printf("Check if LED is on and press mute button again to exit the test\n");
 
                     op = 0xFF;
                     while ((op & MUTE_BUTTON) != 0){

@@ -5,6 +5,7 @@
 #include <xclib.h>
 #include <string.h>
 #include <stdlib.h>
+#include "debug_print.h"
 #include "i2c.h"
 #include "i2s.h"
 #include "dsp_fft.h"
@@ -95,8 +96,14 @@ void configure_dac()
     par {
         [[distribute]] i2c_master(i_i2c, 1, p_scl, p_sda, 100);
         {
-            unsigned char data = 0;
             i2c_regop_res_t i2c_res;
+
+            // Reset DAC via I2C expander
+            I2EXP_REGWRITE(6, 0xFF);
+            delay_milliseconds(100);
+            I2EXP_REGWRITE(6, 0x7F);
+            delay_milliseconds(100);
+
             // Wait
             delay_milliseconds(400); //give tile0 enough time to bring dac out of reset
             // Set register page to 0
@@ -104,14 +111,14 @@ void configure_dac()
             // Initiate SW reset (PLL is powered off as part of reset)
             DAC3101_REGWRITE(DAC3101_SW_RST, 0x01);
             // so I've got 24MHz in to PLL, I want 24.576MHz or 22.5792MHz out.
-            
+
             // I will always be using fractional-N (D != 0) so we must set R = 1
             // PLL_CLKIN/P must be between 10 and 20MHz so we must set P = 2
-            
+
             // PLL_CLK = CLKIN * ((RxJ.D)/P)
             // We know R = 1, P = 2.
             // PLL_CLK = CLKIN * (J.D / 2)
-                        
+
             // For 24.576MHz:
             // J = 8
             // D = 1920
@@ -124,7 +131,7 @@ void configure_dac()
             // DAC_CLK = PLL_CLK / 4 = 24.576MHz.
             // DAC_MOD_CLK = DAC_CLK / 4 = 6.144MHz.
             // DAC_FS = DAC_MOD_CLK / 128 = 48kHz.
-            
+
             // For 22.5792MHz:
             // J = 7
             // D = 5264
@@ -137,7 +144,7 @@ void configure_dac()
             // DAC_CLK = PLL_CLK / 4 = 22.5792MHz.
             // DAC_MOD_CLK = DAC_CLK / 4 = 5.6448MHz.
             // DAC_FS = DAC_MOD_CLK / 128 = 44.1kHz.
-            
+
             // This setup is for 3.072MHz in, 24.576MHz out.
             // We want PLLP = 1, PLLR = 4, PLLJ = 8, PLLD = 0, MDAC = 4, NDAC = 4, DOSR = 128
              // Set PLL J Value to 7
@@ -149,10 +156,10 @@ void configure_dac()
             DAC3101_REGWRITE(DAC3101_PLL_D_LSB, 0x00);
 
             delay_milliseconds(1);
-            
+
             // Set PLL_CLKIN = BCLK (device pin), CODEC_CLKIN = PLL_CLK (generated on-chip)
             DAC3101_REGWRITE(DAC3101_CLK_GEN_MUX, 0x07);
-            
+
             // Set PLL P and R values and power up.
             DAC3101_REGWRITE(DAC3101_PLL_P_R, 0x94);
 
@@ -162,14 +169,14 @@ void configure_dac()
             DAC3101_REGWRITE(DAC3101_MDAC_VAL, 0x84);
             // Set OSR clock divider to 128.
             DAC3101_REGWRITE(DAC3101_DOSR_VAL_LSB, 0x80);
-            
+
             // Set CLKOUT Mux to DAC_CLK
             DAC3101_REGWRITE(DAC3101_CLKOUT_MUX, 0x04);
             // Set CLKOUT M divider to 1 and power up.
             DAC3101_REGWRITE(DAC3101_CLKOUT_M_VAL, 0x81);
             // Set GPIO1 output to come from CLKOUT output.
             DAC3101_REGWRITE(DAC3101_GPIO1_IO, 0x10);
-            
+
             // Set CODEC interface mode: I2S, 24 bit, slave mode (BCLK, WCLK both inputs).
             DAC3101_REGWRITE(DAC3101_CODEC_IF, 0x20);
             // Set register page to 1
@@ -204,7 +211,7 @@ void configure_dac()
             DAC3101_REGWRITE(DAC3101_SPKL_VOL_A, 0x92);
             // Enable Right Class-D output analog volume, set = -9 dB
             DAC3101_REGWRITE(DAC3101_SPKR_VOL_A, 0x92);
-            
+
             delay_milliseconds(100);
 
             // Power up DAC
@@ -229,7 +236,7 @@ void configure_dac()
     } /* par */
 }
 #define PEAK_BIN 32
-void generate_sine() {    
+void generate_tone() {
     i2c_master_if i_i2c[1];
 
     par {
@@ -246,7 +253,9 @@ void generate_sine() {
             DAC3101_REGWRITE(DAC3101_BEEP_SIN_LSB, SIN_COEFF&0xFF);
             DAC3101_REGWRITE(DAC3101_BEEP_COS_MSB, COS_COEFF>>8);
             DAC3101_REGWRITE(DAC3101_BEEP_COS_LSB, COS_COEFF&0xFF);
+
             DAC3101_REGWRITE(DAC3101_LEFT_BEEP_GEN, 0x80);
+            delay_milliseconds(100);
 
             while (1) {
                 DAC3101_REGWRITE(DAC3101_LEFT_BEEP_GEN, 0x80);
@@ -277,11 +286,15 @@ double compute_snr(dsp_complex_t* sig)
                 peak = en;
             } else {
                 noise += en;
-            }        
+            }
         }
         double snr = 10*log10(peak/noise);
-        printf("peak val %.2f, noise floor %.2f, SNR %.2f dB\n", peak, noise, snr);
-        return snr;        
+        if (peak==0 || noise==0) {
+            debug_printf("Error: No data received\n");
+            debug_printf("FAIL\n");
+            exit(3);
+        }
+        return snr;
 }
 
 void i2s_process(server i2s_callback_if i2s)
@@ -294,22 +307,12 @@ void i2s_process(server i2s_callback_if i2s)
     select {
     case i2s.init(i2s_config_t &?i2s_config, tdm_config_t &?tdm_config):
       i2s_config.mode = I2S_MODE_I2S;
-      unsigned master_clock_freq = MASTER_CLOCK_FREQUENCY_48; 
-
-      if ((SAMPLE_FREQUENCY % 11025) == 0)
-      {
-          master_clock_freq = MASTER_CLOCK_FREQUENCY_44_1;
-      }
-      i2s_config.mclk_bclk_ratio = (master_clock_freq/SAMPLE_FREQUENCY)/64;
-
-
+      i2s_config.mclk_bclk_ratio = (MASTER_CLOCK_FREQUENCY_48/SAMPLE_FREQUENCY)/64;
       break;
 
     case i2s.receive(size_t index, int32_t in_samp):
-      //printf("tile0: received sample 0x%x\n",in_samp);
       if(index == 0)
       {
-          //chan0 <: in_samp;
           sig[count].re = in_samp;
           sig[count].im = 0;
       }
@@ -319,7 +322,7 @@ void i2s_process(server i2s_callback_if i2s)
           count++;
       }
       double snr_left = 0;
-      double snr_right = 0; 
+      double snr_right = 0;
       if (count==FFT_LENGTH) {
         snr_left = compute_snr(sig);
         for (int i=0; i<FFT_LENGTH; i++) {
@@ -327,15 +330,22 @@ void i2s_process(server i2s_callback_if i2s)
         }
         snr_right = compute_snr(sig);
         if (snr_left<MIN_SNR_DB) {
-            printf("Fail: Left SNR is below %ddB", MIN_SNR_DB);
+            debug_printf("Error: Left channel SNR is %ddB (must be >%ddB)\n", (int) snr_left, MIN_SNR_DB);
+            debug_printf("FAIL\n", MIN_SNR_DB);
             exit(1);
         } else if (snr_right<MIN_SNR_DB) {
-            printf("Fail: Right SNR is below %ddB", MIN_SNR_DB);
+            exit(2);
+            debug_printf("Error: Right channel SNR is %ddB (must be >%ddB)\n", (int) snr_right, MIN_SNR_DB);
+            debug_printf("FAIL\n", MIN_SNR_DB);
             exit(2);
         } else {
             // success
+            debug_printf("Left channel SNR is %ddB (must be >%ddB)\n", (int) snr_left, MIN_SNR_DB);
+            debug_printf("Right channel SNR is %ddB (must be >%ddB)\n", (int) snr_right, MIN_SNR_DB);
+            debug_printf("PASS\n", MIN_SNR_DB);
             exit(0);
         }
+        count = 0;
       }
       break;
 
@@ -351,16 +361,16 @@ void i2s_process(server i2s_callback_if i2s)
 }
 
 int main()
-{  
+{
     interface i2s_callback_if i_i2s;
 
     par{
         on tile[1]: {
             configure_dac();
-            generate_sine();
+            generate_tone();
         }
         on tile[0]: {
-            delay_seconds(2);
+            delay_seconds(5);
             par{
                 create_i2s_slave(i_i2s);
                 i2s_process(i_i2s);

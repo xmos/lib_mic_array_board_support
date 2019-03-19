@@ -17,7 +17,6 @@ on tile[1]: port p_sda = PORT_I2C_SDA;
 
 #define DEVICE_ADDRESS 0x68
 
-#include "print.h"
 void test_led()
 {
     i2c_master_if i_i2c[1];
@@ -39,7 +38,7 @@ void test_led()
                 REGWRITE(DEVICE_ADDRESS, 0x07, 0x00);
 
                 delay_milliseconds(500);
-                
+
                 // Set PWM register (OUT1-OUT3) to red
                 REGWRITE(DEVICE_ADDRESS, 0x04, 0x01);
                 REGWRITE(DEVICE_ADDRESS, 0x05, 0x01);
@@ -48,7 +47,7 @@ void test_led()
 
                 delay_milliseconds(500);
 
-            }            
+            }
             // Shutdown
             i_i2c[0].shutdown();
         }

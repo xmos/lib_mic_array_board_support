@@ -20,7 +20,7 @@ on tile[1]: port p_sda = PORT_I2C_SDA;
 #define VOL_DOWN_BUTTON 0x02
 #define ACTION_BUTTON   0x04
 #define VOL_UP_BUTTON   0x08
-#include "print.h"
+
 void test_buttons()
 {
     i2c_master_if i_i2c[1];
@@ -41,6 +41,12 @@ void test_buttons()
             {
                 detected_press = 0;
                 REGREAD(DEVICE_ADDRESS, 0, op);
+                if(op == 0) {
+                    debug_printf("Error: Cannot read register\n");
+                    debug_printf("FAIL\n");
+                    exit(2);
+                }
+
                 if((op & VOL_UP_BUTTON) == 0)
                 {
                     debug_printf("Volume Up button pressed\n");
@@ -117,7 +123,7 @@ void test_buttons()
                 {
                     if(num_presses[i] >= 4)
                     {
-                        debug_printf("Button pressed more than 4 times\n");
+                        debug_printf("Error: Button pressed more than 4 times\n");
                         debug_printf("FAIL\n");
                         exit(1);
                     }

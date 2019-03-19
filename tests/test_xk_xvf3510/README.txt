@@ -1,4 +1,10 @@
-To run the tests into this folder the following steps must be followed:
+To run the tests into this folder the following repository must be cloned:
+  - lib_i2c
+  - lib_i2s
+  - lib_dsp
+  - lib_logging
+
+The following steps must be followed:
 
   1. Flash in an RPi Hat board the .xe file in ./test_rpi_hat_clocks/bin/
 

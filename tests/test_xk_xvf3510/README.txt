@@ -4,7 +4,7 @@ To run the tests into this folder the following steps must be followed:
 
   2. Add a pull-up resistor between pin 4 and pin 3 (I2C_SDA) in the DAC board
 
-  3. Connect the following pins between the RPi Hat board and the DAC board:
+  3. Connect the following pins between the RPi Hat board J5 expander and the DAC board:
         - 5V power: pin 2
         - PI_MCLK:  pin 5
         - I2S_BCLK: pin 12

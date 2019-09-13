@@ -1,3 +1,6 @@
+*** NB: needs lib_mic_array written for DDR mics (currently in fork: henkmuller/lib_mic_array, commit 0325fd72b251715e551d56e1eb666212bfb3dd1e).
+
+
 Overview
 --------
 

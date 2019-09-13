@@ -12,7 +12,7 @@
 #include "mic_array.h"
 #include "mic_array_board_support.h"
 
-#define ALLOWED_DB_DIFFERENCE (12.0)        //Float in dB
+#define ALLOWED_DB_DIFFERENCE (6.0)        //Float in dB
 #define LOGGING               (1)           //Enable logging(verbose) output
 #define NUMBER_OF_AVG_ITTERATIONS_LOG2 (10) //Controls the time to build up the spectrum
 
@@ -27,7 +27,12 @@
 #define ENABLE_PRECISION_MAXIMISATION 1
 
 on tile[0]: out port p_pdm_clk              = XS1_PORT_1E;
+#if DDR
+on tile[0]: in buffered port:32 p_pdm_mics  = XS1_PORT_4D;
+on tile[0]: clock pdmclk6                   = XS1_CLKBLK_3;
+#else
 on tile[0]: in buffered port:32 p_pdm_mics  = XS1_PORT_8B;
+#endif
 on tile[0]: in port p_mclk                  = XS1_PORT_1F;
 on tile[0]: clock pdmclk                    = XS1_CLKBLK_2;
 
@@ -131,7 +136,9 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
 #endif
                 total_power += p;
             }
+#if LOGGING
             printf("\n");
+#endif
         }
         if(total_power < 10000.0){
             for(unsigned i=0;i<COUNT;i++){
@@ -162,6 +169,7 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
                 }
             }
         }
+
         for(unsigned ch_a=0;ch_a<COUNT;ch_a++){
             x_bar[ch_a] /= bin_count;
             xx_bar[ch_a] /= bin_count;
@@ -221,21 +229,32 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
                     failure_count += 2;
                 }
 #if LOGGING
-                printf("beta:%fdb = %f\n", beta_db, beta);
+                printf("%u->%u beta:%fdb = %f\n", ch_a, ch_b, beta_db, beta);
 #endif
             }
         }
+
+        double mic_corellation[COUNT] = {0};
 
         for(unsigned ch_a=0;ch_a<COUNT;ch_a++){
             for(unsigned ch_b=ch_a + 1;ch_b<COUNT;ch_b++){
                 double r = (xy_bar[ch_a][ch_b] - x_bar[ch_a]*x_bar[ch_b]) /
                         sqrt((xx_bar[ch_a] - x_bar[ch_a]*x_bar[ch_a]) *
                                 (xx_bar[ch_b] - x_bar[ch_b]*x_bar[ch_b]));
-                max_r = fmax(max_r, r);
-                min_r = fmin(min_r, r);
 #if LOGGING
-                printf("r: %f\n", r);
+                printf("%u->%u  r: %f\n", ch_a, ch_b, r);
 #endif
+                mic_corellation[ch_a] += r;
+                mic_corellation[ch_b] += r;
+            }
+        }
+
+        for(unsigned i=0;i<COUNT;i++){
+#if LOGGING
+            printf("mic %u r: %f\n", i, mic_corellation[i]);
+#endif
+            if(mic_corellation[i] < ((float)(COUNT - 1)*0.8)){
+                printf("Mic %u - uncorrelated\n", i);
             }
         }
 
@@ -275,13 +294,18 @@ int main() {
 
         on tile[0]:{
             c_sync :> int;
-
             stop_clock(pdmclk);
-            configure_clock_src_divide(pdmclk, p_mclk, 4);
+
+#if DDR
+            mic_array_setup_ddr(pdmclk, pdmclk6, p_mclk, p_pdm_clk, p_pdm_mics, 8);
+#else
+/*          configure_clock_src_divide(pdmclk, p_mclk, 4);
             configure_port_clock_output(p_pdm_clk, pdmclk);
             configure_in_port(p_pdm_mics, pdmclk);
-            start_clock(pdmclk);
-
+            start_clock(pdmclk); */
+			mic_array_setup_sdr(pdmclk, p_mclk, p_pdm_clk, p_pdm_mics, 8);
+#endif	
+		
             streaming chan c_4x_pdm_mic[DECIMATOR_COUNT];
             streaming chan c_ds_output[DECIMATOR_COUNT];
 

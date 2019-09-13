@@ -63,6 +63,7 @@ int test_spi_ports()
                 { 
                     debug_printf("Error: wrong number of transitions on port SPI_CS_N: %d\n", cnt_spi_cs_n);
                     ret = 1; 
+                    run = 0;
                 }
                 break;
         }
@@ -88,6 +89,7 @@ int test_spi_ports()
     if (ret == 0) {
         debug_printf("PASS\n");
     } else {
+        debug_printf("FAIL\n");
         exit(1);
     }
     return 0;

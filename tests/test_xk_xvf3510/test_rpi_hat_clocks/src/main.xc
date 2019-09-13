@@ -72,6 +72,13 @@ on tile[0]: out buffered port:32  p_dout[1] =  {I2S_MIC_DATA};
 
 on tile[0]: out port p_mute = PORT_MUTE;
 
+// SPI
+on tile[0]: out port p_spi_cs_n = XS1_PORT_1A;
+on tile[0]: out port p_spi_clk = XS1_PORT_1C;
+on tile[0]: out port p_spi_mosi = XS1_PORT_1D;
+on tile[0]: out port p_spi_miso = XS1_PORT_1E;
+
+// I2C
 on tile[1]: port p_scl = PORT_I2C_SCL;
 on tile[1]: port p_sda = PORT_I2C_SDA;
 
@@ -267,6 +274,21 @@ void create_i2s_master(client i2s_callback_if i_i2s)
     i2s_master0(i_i2s, p_dout, 1, p_din, 1, p_bclk, p_lrclk, bclk, mclk);
 }
 
+void send_data_on_spi_ports() {
+    int count = 0;
+    while (1) {
+        // Send a bit per port
+        p_spi_cs_n <: count&0x01;
+        p_spi_clk  <: (count&0x02)>>1;
+        p_spi_mosi <: (count&0x04)>>2;
+        p_spi_miso <: (count&0x08)>>3;
+        count++;
+        if (count==0xFFFF) {
+            count = 0;
+        }
+    }
+}
+
 int main()
 {
     interface i2s_callback_if i_i2s;
@@ -276,6 +298,7 @@ int main()
             par {
                 create_i2s_master(i_i2s);
                 i2s_process(i_i2s);
+                send_data_on_spi_ports();
             }
         }
 

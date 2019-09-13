@@ -1,10 +1,8 @@
-*.prefs
 **/.build*/*
 **/bin/*
 *.o
 *.xe
 *.vcd
-*.s
 *.xi
 *.i
 *.a
@@ -13,8 +11,26 @@
 **/pdf/*
 **/html/*
 *.pyc
+*.pytest_cache
 **/.settings*
 Installs/*
 test_results.csv
 *.log
+**.swp
+**.swo
+**.swn
+**.swm
+**/tests/**/*.png
+**/tests/**/*.wav
+**/*.egg-info/
+**/.venv/**
+Pipfile.lock
+
+# Unit test runners
+**/runners
+
+# waf build files
+.lock-waf_*
+**/.waf-*/
+**/build/
 .*.swp

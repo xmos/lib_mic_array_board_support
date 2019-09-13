@@ -36,7 +36,6 @@ int test_spi_ports()
     int y = 0;
     t :> y;
     int run = 0x0F;
-    int ret = 0;
 
     while (run) {
         select{
@@ -75,30 +74,13 @@ int test_spi_ports()
                 if(y > 2000000000) 
                 { 
                     debug_printf("Error: Not all transitions seen\n");
-                    run = 0; 
-                    ret = 1;
+                    exit(1);   
                 }
                 break;
         }
     }
-    if (ret==0) {
-        debug_printf("PASS\n");
-    } else {
-        if (run&BIT_SHIFT(P_SPI_CS_N_BIT)) {
-            debug_printf("Error: port SPI_CS_N has not received data");
-        }
-        if (run&BIT_SHIFT(P_SPI_CLK_BIT)) {
-            debug_printf("Error: port SPI_CLK has not received data");
-        }
-        if (run&BIT_SHIFT(P_SPI_MOSI_BIT)) {
-            debug_printf("Error: port SPI_MOSI has not received data");
-        }
-        if (run&BIT_SHIFT(P_SPI_MISO_BIT)) {
-            debug_printf("Error: port SPI_MISO has not received data");
-        }
-
-    }
-    return ret;
+    debug_printf("PASS\n");
+    return 0;
 }
 
 

@@ -275,13 +275,15 @@ void create_i2s_master(client i2s_callback_if i_i2s)
 }
 
 void send_data_on_spi_ports() {
-    int toggle = 0;
+    int count = 0;
     while (1) {
-        p_spi_cs_n <: toggle;
-        p_spi_clk <: toggle;
-        p_spi_mosi <: toggle;
-        p_spi_miso <: toggle;
-        toggle = !toggle;
+        p_spi_cs_n <: count&0x01;
+        p_spi_clk  <: (count&0x02)>>1;
+        p_spi_mosi <: (count&0x04)>>2;
+        p_spi_miso <: (count&0x08)>>3;
+        if (count==0xFFFF) {
+            count++;
+        }
     }
 }
 

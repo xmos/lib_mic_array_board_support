@@ -12,6 +12,7 @@ The following steps must be followed:
       a) A 10k pull-up resistor between SDA and 3V3 
       b) A link from MLCK to pin 7 on J5
       c) A zero ohm resistor on R32
+      d) 4.7k Pull ups to SPI_MOSI, SPI_MISO, and SPI_CLK
 
   3. Connect the RPi Hat board J5 to the DAC board with a 2x40 pin cable
 

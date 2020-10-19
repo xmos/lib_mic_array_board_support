@@ -8,6 +8,7 @@
 #include "stdio.h"
 #include <stdlib.h>
 #include <math.h>
+#include <print.h>
 
 #include "mic_array.h"
 #include "mic_array_board_support.h"
@@ -26,15 +27,35 @@
 #define FFT_CHANNELS ((COUNT+1)/2)
 #define ENABLE_PRECISION_MAXIMISATION 1
 
-on tile[0]: out port p_pdm_clk              = XS1_PORT_1L;
-#if DDR
-on tile[0]: in buffered port:32 p_pdm_mics  = XS1_PORT_4E;
-on tile[0]: clock pdmclk6                   = XS1_CLKBLK_3;
+#ifdef XCORE_AI
+    #define PDM_TILE    1
 #else
-on tile[0]: in buffered port:32 p_pdm_mics  = XS1_PORT_8B;
+    #define PDM_TILE    0
 #endif
-on tile[0]: in port p_mclk_in               = XS1_PORT_1K;
-on tile[0]: clock pdmclk                    = XS1_CLKBLK_2;
+
+// Nominal setting is ref div = 25, fb_div = 1024, op_div = 2
+// PCF Freq 0.96GHz
+#define PLL_NOM  0xC003FF18 // This is 3.072MHz * 20
+
+#ifdef XCORE_AI
+    on tile[1]: in buffered port:32 p_pdm_mics  = PORT_PDM_DATA;
+    on tile[1]: in buffered port:32 p_pdm_mics_4b  = XS1_PORT_4E;
+    on tile[1]: out port p_pdm_clk              = PORT_PDM_CLK;
+    on tile[1]: clock pdmclk6                   = XS1_CLKBLK_3;
+    on tile[1]: clock pdmclk                    = XS1_CLKBLK_2;
+    on tile[1]: in port p_mclk_in               = PORT_MCLK_IN;
+#else
+    on tile[0]: out port p_pdm_clk              = XS1_PORT_1L;
+    #if DDR
+    on tile[0]: in buffered port:32 p_pdm_mics  = XS1_PORT_4E;
+    on tile[0]: clock pdmclk6                   = XS1_CLKBLK_3;
+    #else
+    on tile[0]: in buffered port:32 p_pdm_mics  = XS1_PORT_8B;
+    #endif
+    on tile[0]: in port p_mclk_in               = XS1_PORT_1K;
+    on tile[0]: clock pdmclk                    = XS1_CLKBLK_2;
+#endif
+
 
 int data[8][THIRD_STAGE_COEFS_PER_STAGE*DECIMATION_FACTOR];
 
@@ -45,6 +66,31 @@ int your_favourite_window_function(unsigned i, unsigned window_length){
 //This is here until lib_dsp is updated.
 void dsp_bfp_shl2( dsp_complex_t pts[], const uint32_t N,
                    const int32_t shift_re, const int32_t shift_im );
+
+//Prints an ASCII art spectrum plot of the two mics.
+//Linear X axis and Log Y axis
+void print_spec(int64_t subband_rms_power[COUNT][FRAME_LENGTH/2]){
+    int dbs[COUNT][FRAME_LENGTH/2] = {{0}};
+    for (unsigned band=1;band < FRAME_LENGTH/2;band++){
+        for(unsigned ch=0;ch<2;ch++){
+            int64_t b = subband_rms_power[ch][band];
+            double p = sqrt((double)b);
+            int db = 10 * log10(p) - 25;
+            dbs[ch][band] = db;
+            // printf("db %d: %d\n", band, db);
+        }
+    }
+    for(int dbp = 50; dbp >= 0; dbp--){
+        for(unsigned ch=0;ch<2;ch++){
+            for (unsigned band=1;band < FRAME_LENGTH/2;band++){
+                printf("%s", dbs[ch][band] >= dbp ? "M" : "." );
+            }
+            printf("    ");
+        }
+        printf("\n");
+    }
+}
+
 
 void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
     unsafe{
@@ -140,6 +186,8 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
             printf("\n");
 #endif
         }
+        print_spec(subband_rms_power);
+
         if(total_power < 10000.0){
             for(unsigned i=0;i<COUNT;i++){
                 printf("Microphone %d absent\n", i);
@@ -278,7 +326,7 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
     }
 }
 
-on tile[0] : clock mclk_internal = XS1_CLKBLK_5;
+on tile[PDM_TILE] : clock mclk_internal = XS1_CLKBLK_5;
 
 void set_node_pll_reg(tileref tile_ref, unsigned reg_val){
     write_sswitch_reg(get_tile_id(tile_ref), XS1_SSWITCH_PLL_CTL_NUM, reg_val);
@@ -290,21 +338,68 @@ void run_clock(void) {
     start_clock(mclk_internal);
 }
 
-// Nominal setting is ref div = 25, fb_div = 1024, op_div = 2
-// PCF Freq 0.96MHz
 
-#define PLL_NOM  0xC003FF18 // This is 3.072MHz
+
 
 void set_pll(void) {
     set_node_pll_reg(tile[0], PLL_NOM);
     run_clock();
 }
 
+//Note unusual casting of channel to a port. i.e. we output directly onto channel rather than port
+unsafe{
+    void call_mic_array_pdm_rx(chanend c_mic_dual_pdm, streaming chanend c_4x_pdm_mic_0, streaming chanend c_4x_pdm_mic_1){
+        unsafe{
+            buffered port:32 * unsafe p_ptr = ( buffered port:32 * unsafe ) &c_mic_dual_pdm;
+            //printf("%p\n", *p_ptr);
+            mic_array_pdm_rx(*p_ptr, c_4x_pdm_mic_0, c_4x_pdm_mic_1);
+        }
+
+    }
+}
+
+//This receives PDM on the 1b port and re-packs it so that
+//it looks like what would have been rx'ed on a 4b port
+//We then punt it over a channel directly to the input to mic_array
+void port_shim_1b_4b(in buffered port:32 p_pdm, chanend c_out){
+    while(1){
+        unsigned val;
+        timer t;
+        unsigned t0, t1;
+
+        //GET PORT DATA
+        asm volatile("in %0, res[%1]" : "=r"(val)  : "r"(p_pdm)); //Use ASM so we avoid SETC instruction
+        // printbinln(val);
+        t :> t0;
+
+        #pragma loop unroll
+        #pragma unsafe arrays
+        for(int w = 0; w < 4; w++){
+            unsigned o = 0;
+
+            #pragma loop unroll
+            #pragma unsafe arrays
+            for(int i = 0; i < 32; i+=4){
+                if(val & 0x1){
+                    o |= 0x1 << i;
+                }
+                val >>= 1;
+            }
+            outuint(c_out, o);
+            // printbinln(o);
+
+        }
+        t :> t1;
+        // printf("%d\n", t1-t0);
+    }
+}
+
+
 int main() {
 
     par {
 
-	on tile[0]:{
+	on tile[PDM_TILE]:{
 
 			stop_clock(pdmclk);
 			set_pll();
@@ -320,9 +415,15 @@ int main() {
 		
             streaming chan c_4x_pdm_mic[DECIMATOR_COUNT];
             streaming chan c_ds_output[DECIMATOR_COUNT];
+            chan c_shim;
 
             par {
+#ifdef XCORE_AI
+                port_shim_1b_4b(p_pdm_mics, c_shim);
+                call_mic_array_pdm_rx(c_shim, c_4x_pdm_mic[0], c_4x_pdm_mic[1]);
+#else
                 mic_array_pdm_rx(p_pdm_mics, c_4x_pdm_mic[0], c_4x_pdm_mic[1]);
+#endif
                 mic_array_decimate_to_pcm_4ch(c_4x_pdm_mic[0], c_ds_output[0], MIC_ARRAY_NO_INTERNAL_CHANS);
                 mic_array_decimate_to_pcm_4ch(c_4x_pdm_mic[1], c_ds_output[1], MIC_ARRAY_NO_INTERNAL_CHANS);
                 test(c_ds_output);

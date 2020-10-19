@@ -1,7 +1,7 @@
 # The TARGET variable determines what target system the application is
 # compiled for. It either refers to an XN file in the source directories
 # or a valid argument for the --target option when compiling
-TARGET = SMART-MIC-BASE-1V0
+
 
 # The APP_NAME variable determines the name of the final .xe file. It should
 # not include the .xe postfix. If left blank the name will default to
@@ -19,7 +19,7 @@ USED_MODULES = lib_mic_array lib_mic_array_board_support
 COMMON_FLAGS = -O2 -g -report
 
 #XCC_FLAGS_8_MICS_DDR = $(COMMON_FLAGS) -DCOUNT=8 -DDDR=1
-XCC_FLAGS_2_MICS_DDR = $(COMMON_FLAGS) -DCOUNT=2 -DDDR=1
+# XCC_FLAGS_2_MICS_DDR = $(COMMON_FLAGS) -DCOUNT=2 -DDDR=1  
 #XCC_FLAGS_7_MICS_SDR = $(COMMON_FLAGS) -DCOUNT=7 -DDDR=0
 #XCC_FLAGS_6_MICS_SDR = $(COMMON_FLAGS) -DCOUNT=6 -DDDR=0
 #XCC_FLAGS_5_MICS_SDR = $(COMMON_FLAGS) -DCOUNT=5 -DDDR=0
@@ -27,6 +27,15 @@ XCC_FLAGS_2_MICS_DDR = $(COMMON_FLAGS) -DCOUNT=2 -DDDR=1
 #XCC_FLAGS_3_MICS_SDR = $(COMMON_FLAGS) -DCOUNT=3 -DDDR=0
 #XCC_FLAGS_2_MICS_SDR = $(COMMON_FLAGS) -DCOUNT=2 -DDDR=0
 #XCC_FLAGS_1_MICS_SDR = $(COMMON_FLAGS) -DCOUNT=1 -DDDR=0
+
+XCC_FLAGS_2_MICS_DDR_XS3 = $(COMMON_FLAGS) -DCOUNT=2 -DDDR=1 -DXCORE_AI=1
+
+ifeq ($(findstring XS3, $(CONFIG)), XS3)
+  TARGET = XCORE-AI-EXPLORER
+else
+  TARGET = SMART-MIC-BASE-1V0
+endif
+
 
 # The XCORE_ARM_PROJECT variable, if set to 1, configures this
 # project to create both xCORE and ARM binaries.

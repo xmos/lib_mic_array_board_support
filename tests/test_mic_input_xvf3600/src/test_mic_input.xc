@@ -48,12 +48,8 @@
 #define APP_PLL_DIV  ((APP_PLL_DIV_INPUT_SEL << 31) | (APP_PLL_DIV_DISABLE << 16) | APP_PLL_DIV_VALUE)
 #define APP_PLL_FRAC ((APP_PLL_FRAC_EN << 31) | (APP_PLL_FRAC_NPLUS1_CYCLES << 8) | APP_PLL_FRAC_TOTAL_CYCLES)
 on tile[0]: out port p_pdm_clk              = PORT_PDM_CLK;
-#if DDR
+
 on tile[0]: in buffered port:32 p_pdm_mics  = PORT_PDM_DATA;
-on tile[0]: clock pdmclk6                   = XS1_CLKBLK_3;
-#else
-on tile[0]: in buffered port:32 p_pdm_mics  = PORT_PDM_DATA;
-#endif
 on tile[0]: in port p_mclk                  = PORT_PDM_MCLK;
 on tile[0]: clock pdmclk                    = XS1_CLKBLK_2;
 
@@ -359,17 +355,9 @@ int main() {
 
             stop_clock(pdmclk);
 
-#if DDR
-            printf("Set up DDR\n");
-            mic_array_setup_ddr(pdmclk, pdmclk6, p_mclk, p_pdm_clk, p_pdm_mics, 8);
-#else
             printf("Set up SDR\n");
-/*          configure_clock_src_divide(pdmclk, p_mclk, 4);
-            configure_port_clock_output(p_pdm_clk, pdmclk);
-            configure_in_port(p_pdm_mics, pdmclk);
-            start_clock(pdmclk); */
             mic_array_setup_sdr(pdmclk, p_mclk, p_pdm_clk, p_pdm_mics, 8);
-#endif
+
             streaming chan c_4x_pdm_mic[DECIMATOR_COUNT];
             streaming chan c_ds_output[DECIMATOR_COUNT];
             printf("Run test\n");

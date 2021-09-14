@@ -1,6 +1,11 @@
 Microphone array board support library change log
 =================================================
 
+2.2.4
+-----
+
+  * ADDED: Microphone tests for XVF3600 QF60 board
+
 2.2.3
 -----
 

@@ -4,7 +4,7 @@
 Overview
 --------
 
-This test application is intended for testing arrays of microphones of the XVF3600 board
+This test application is intended for testing arrays of microphones of the XVF3600 board. The dependent libs and versions for this test are listed in the XGIT view xvf3600_mic_test_view.
 
 Running the Test
 ................

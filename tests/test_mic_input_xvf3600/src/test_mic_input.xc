@@ -27,17 +27,72 @@
 #define FFT_CHANNELS ((COUNT+1)/2)
 #define ENABLE_PRECISION_MAXIMISATION 1
 
-on tile[0]: out port p_pdm_clk              = XS1_PORT_1E;
-#if DDR
-on tile[0]: in buffered port:32 p_pdm_mics  = XS1_PORT_4D;
-on tile[0]: clock pdmclk6                   = XS1_CLKBLK_3;
-#else
-on tile[0]: in buffered port:32 p_pdm_mics  = XS1_PORT_8B;
-#endif
-on tile[0]: in port p_mclk                  = XS1_PORT_1F;
+// App PLL setup
+#define APP_PLL_CTL_BYPASS      0     // 0 = no bypass, 1 = bypass.
+#define APP_PLL_CTL_INPUT_SEL   0     // 0 = XTAL, 1 = sysPLL
+#define APP_PLL_CTL_ENABLE      1     // 0 = disabled, 1 = enabled.
+#define APP_PLL_CTL_OD          4     // Output divider = (OD+1). OD valid from 0 to 7.
+#define APP_PLL_CTL_F           511   // FB divider (PLL Multiplier) = (F+1)/2. F valid from 1 to 8191.
+#define APP_PLL_CTL_R           4     // Ref divider = (R+1). R valid from 0 to 63.
+
+// App PLL divider setup
+#define APP_PLL_DIV_INPUT_SEL   1     // 0 = sysPLL, 1 = app_PLL
+#define APP_PLL_DIV_DISABLE     0     // 1 = disabled (pin connected to X1D11), 0 = enabled divider output to pin.
+#define APP_PLL_DIV_VALUE       9     // Divide by N+1 - remember there's a /2 also afterwards for 50/50 duty cycle.
+
+// Fractional divide is M/N
+#define APP_PLL_FRAC_EN             0   // 0 = disabled (do not use fractional feedback divider), 1 = enabled
+#define APP_PLL_FRAC_NPLUS1_CYCLES  0   // M value is this reg value + 1.
+#define APP_PLL_FRAC_TOTAL_CYCLES   0   // N value is this reg value + 1.
+
+#define APP_PLL_CTL  ((APP_PLL_CTL_BYPASS << 29) | (APP_PLL_CTL_INPUT_SEL << 28) | (APP_PLL_CTL_ENABLE << 27) | (APP_PLL_CTL_OD << 23) | (APP_PLL_CTL_F << 8) | APP_PLL_CTL_R)
+#define APP_PLL_DIV  ((APP_PLL_DIV_INPUT_SEL << 31) | (APP_PLL_DIV_DISABLE << 16) | APP_PLL_DIV_VALUE)
+#define APP_PLL_FRAC ((APP_PLL_FRAC_EN << 31) | (APP_PLL_FRAC_NPLUS1_CYCLES << 8) | APP_PLL_FRAC_TOTAL_CYCLES)
+on tile[0]: out port p_pdm_clk              = PORT_PDM_CLK;
+
+on tile[0]: in buffered port:32 p_pdm_mics  = PORT_PDM_DATA;
+on tile[0]: in port p_mclk                  = PORT_PDM_MCLK;
 on tile[0]: clock pdmclk                    = XS1_CLKBLK_2;
 
+port p_rst_shared = on tile[0]: XS1_PORT_4F; // Bit 1: DAC_RST_N, Bit 2: SQ_nLIN, BIT 3: INT_N
+
 int data[8][THIRD_STAGE_COEFS_PER_STAGE*DECIMATION_FACTOR];
+
+// Function to write the APP_PLL_CTL register in a clean way to ensure reliable operation.
+// Need to pass in the tile number and desired register value.
+void set_app_pll (tileref tile, int app_pll_ctl) {
+  printf("Set app PLL\n");
+
+  // Disable the PLL
+  write_node_config_reg(tile, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, (app_pll_ctl & 0xF7FFFFFF));
+  // Enable the PLL to invoke a reset on the appPLL.
+  write_node_config_reg(tile, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, app_pll_ctl);
+  // Must write the CTL register twice so that the F and R divider values are captured using a running clock.
+  write_node_config_reg(tile, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, app_pll_ctl);
+  // Now disable and re-enable the PLL so we get the full 5us reset time with the correct F and R values.
+  write_node_config_reg(tile, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, (app_pll_ctl & 0xF7FFFFFF));
+  write_node_config_reg(tile, XS1_SSWITCH_SS_APP_PLL_CTL_NUM, app_pll_ctl);
+  // Wait for PLL to lock.
+  delay_microseconds(500);
+}
+
+void gen_app_pll_clk (void) {
+  printf("APP_PLL_CTL is 0x%08X\n", APP_PLL_CTL);
+
+  // We must first turn on the App PLL so subsequent clk divider reg writes work.
+  set_app_pll(tile[0], APP_PLL_CTL);
+
+  // Turn off the clock output
+  write_node_config_reg(tile[0], XS1_SSWITCH_SS_APP_CLK_DIVIDER_NUM, (APP_PLL_DIV | 0x00010000));
+  // Set the AppPLL frequency we want
+  set_app_pll(tile[0], APP_PLL_CTL);
+  // Set the fractional divider if used
+  write_node_config_reg(tile[0], XS1_SSWITCH_SS_APP_PLL_FRAC_N_DIVIDER_NUM, APP_PLL_FRAC);
+  // Wait for PLL output frequency to stabilise due to fractional divider enable
+  delay_microseconds(100);
+  // Turn on the clock output
+  write_node_config_reg(tile[0], XS1_SSWITCH_SS_APP_CLK_DIVIDER_NUM, APP_PLL_DIV);
+}
 
 int your_favourite_window_function(unsigned i, unsigned window_length){
     return((int)((double)INT_MAX*sqrt(0.5*(1.0 - cos(2.0 * 3.14159265359*(double)i / (double)(window_length-2))))));
@@ -279,37 +334,34 @@ void test(streaming chanend c_ds_output[DECIMATOR_COUNT]) {
     }
 }
 
-port p_rst_shared                   = on tile[1]: XS1_PORT_4F; // Bit 0: DAC_RST_N, Bit 1: ETH_RST_N
-port p_i2c                          = on tile[1]: XS1_PORT_4E; // Bit 0: SCLK, Bit 1: SDA
 int main() {
     chan c_sync;
-    i2c_master_if i_i2c[1];
     par {
-        on tile[1]: i2c_master_single_port(i_i2c, 1, p_i2c, 100, 0, 1, 0);
-        on tile[1]: {
-            p_rst_shared <: 0x00;
-            mabs_init_pll(i_i2c[0], SMART_MIC_BASE);
-            delay_seconds(5);
-            c_sync <: 1;
-        }
+        on tile[0]: {
 
-        on tile[0]:{
+            // set microphone configuration
+            #if (SQ_MIC_ARRAY == 1)
+            p_rst_shared <: 0x4; // Keep DAC in reset (bit 1 low) and select square mic array (bit 3 high)
+            #else
+            p_rst_shared <: 0x0; // Keep DAC in reset (bit 1 low) and select linear mic array (bit 3 low)
+            #endif
+            gen_app_pll_clk();
+            c_sync <: (int) 0;
+            printf("Send sync token\n");
+        }
+        on tile[0]: {
+            printf("Wait for sync token\n");
             c_sync :> int;
+            printf("Received sync token\n");
+
             stop_clock(pdmclk);
 
-#if DDR
-            mic_array_setup_ddr(pdmclk, pdmclk6, p_mclk, p_pdm_clk, p_pdm_mics, 8);
-#else
-/*          configure_clock_src_divide(pdmclk, p_mclk, 4);
-            configure_port_clock_output(p_pdm_clk, pdmclk);
-            configure_in_port(p_pdm_mics, pdmclk);
-            start_clock(pdmclk); */
-			mic_array_setup_sdr(pdmclk, p_mclk, p_pdm_clk, p_pdm_mics, 8);
-#endif	
-		
+            printf("Set up SDR\n");
+            mic_array_setup_sdr(pdmclk, p_mclk, p_pdm_clk, p_pdm_mics, 8);
+
             streaming chan c_4x_pdm_mic[DECIMATOR_COUNT];
             streaming chan c_ds_output[DECIMATOR_COUNT];
-
+            printf("Run test\n");
             par {
                 mic_array_pdm_rx(p_pdm_mics, c_4x_pdm_mic[0], c_4x_pdm_mic[1]);
                 mic_array_decimate_to_pcm_4ch(c_4x_pdm_mic[0], c_ds_output[0], MIC_ARRAY_NO_INTERNAL_CHANS);

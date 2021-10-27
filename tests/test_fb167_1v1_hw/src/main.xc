@@ -1,3 +1,5 @@
+// Copyright (c) 2017-2021, XMOS Ltd, All rights reserved
+// This software is available under the terms provided in LICENSE.txt.
 // Test of LEDs and buttons.
 #include <xs1.h>
 #include <platform.h>

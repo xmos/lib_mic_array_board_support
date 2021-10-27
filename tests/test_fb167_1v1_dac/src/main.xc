@@ -1,3 +1,5 @@
+// Copyright (c) 2017-2021, XMOS Ltd, All rights reserved
+// This software is available under the terms provided in LICENSE.txt.
 // Test of I2C and I2S connections to DAC
 // Press button A to exit with status 0, button D to exit with status 1
 #include <xs1.h>
